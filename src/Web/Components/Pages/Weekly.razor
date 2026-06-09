@@ -1,125 +1,207 @@
 @page "/"
 @rendermode InteractiveServer
-@inject TimesheetStore Store
+@inject ITimesheetData Data
 @inject ITimeCalculationService Calc
 @inject IHolidayService Holidays
+@inject NavigationManager Nav
 
-<div style="display:flex;flex-direction:column;gap:18px;padding-bottom:40px;">
+@if (_job is null)
+{
+    <div style="padding:40px;color:var(--text-mute);">Loading…</div>
+}
+else
+{
+    <div style="display:flex;flex-direction:column;gap:18px;padding-bottom:40px;">
 
-    @if (_showNote)
-    {
-        <div style="display:flex;gap:12px;align-items:flex-start;padding:13px 15px;border-radius:var(--r-md);background:var(--accent-tint);border:1px solid var(--accent-tintb);">
-            <span style="color:var(--accent);margin-top:1px;"><Icon Name="info" Size="18" /></span>
-            <div style="font-size:13px;color:var(--accent-text);line-height:1.5;flex:1;">
-                <strong>Sample week, fully interactive.</strong> Mon 8 Jun is the <strong>King's Birthday</strong> public holiday (flagged, never blocked);
-                Fri runs an <strong>overnight cutover</strong> crossing midnight; Wed has two entries. Click any row to edit, copy any decimal, or switch jobs.
+        @if (_showNote)
+        {
+            <div style="display:flex;gap:12px;align-items:flex-start;padding:13px 15px;border-radius:var(--r-md);background:var(--accent-tint);border:1px solid var(--accent-tintb);">
+                <span style="color:var(--accent);margin-top:1px;"><Icon Name="info" Size="18" /></span>
+                <div style="font-size:13px;color:var(--accent-text);line-height:1.5;flex:1;">
+                    <strong>Sample week, fully interactive.</strong> Mon 8 Jun is the <strong>King's Birthday</strong> public holiday (flagged, never blocked);
+                    Fri runs an <strong>overnight cutover</strong> crossing midnight; Wed has two entries. Click any row to edit, copy any decimal, or switch jobs.
+                </div>
+                <button class="ts-iconbtn focusable" @onclick="@(() => _showNote = false)" title="Dismiss"
+                        style="width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;border-radius:var(--r-sm);border:none;background:transparent;color:var(--text-soft);cursor:pointer;">
+                    <Icon Name="x" Size="15" />
+                </button>
             </div>
-            <button class="ts-iconbtn focusable" @onclick="@(() => _showNote = false)" title="Dismiss"
-                    style="width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;border-radius:var(--r-sm);border:none;background:transparent;color:var(--text-soft);cursor:pointer;">
-                <Icon Name="x" Size="15" />
-            </button>
-        </div>
-    }
+        }
 
-    @{ var job = Store.GetJob(_selectedJobId); var state = Store.EffectiveState(job); var days = CalendarFormat.WeekDates(_week); }
+        @{ var job = _job; var state = _state; var days = CalendarFormat.WeekDates(_week); }
 
-    <!-- header: job selector + custom fields + week nav -->
-    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
-        <div style="position:relative;">
-            <button @onclick="@(() => _jobMenu = !_jobMenu)" class="focusable"
-                    style="display:flex;align-items:center;gap:11px;padding:8px 12px 8px 10px;border-radius:var(--r-md);border:1px solid var(--line-strong);background:var(--surface);cursor:pointer;box-shadow:var(--sh-1);">
-                <span style="width:34px;height:34px;border-radius:9px;background:var(--accent);color:#fff;display:grid;place-items:center;font-weight:700;font-size:15px;">@job.Name[0]</span>
-                <span style="text-align:left;min-width:0;">
-                    <span style="display:block;font-size:15px;font-weight:700;letter-spacing:-0.01em;white-space:nowrap;">@job.Name</span>
-                    <span style="display:block;font-size:11.5px;color:var(--text-mute);">@state · @job.DecimalPlaces dp</span>
-                </span>
-                <span style="color:var(--text-mute);margin-left:2px;"><Icon Name="chevD" Size="16" /></span>
-            </button>
-            @if (_jobMenu)
+        <!-- header: job selector + custom fields + week nav -->
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+            <div style="position:relative;">
+                <button @onclick="@(() => _jobMenu = !_jobMenu)" class="focusable"
+                        style="display:flex;align-items:center;gap:11px;padding:8px 12px 8px 10px;border-radius:var(--r-md);border:1px solid var(--line-strong);background:var(--surface);cursor:pointer;box-shadow:var(--sh-1);">
+                    <span style="width:34px;height:34px;border-radius:9px;background:var(--accent);color:#fff;display:grid;place-items:center;font-weight:700;font-size:15px;">@job.Name[0]</span>
+                    <span style="text-align:left;min-width:0;">
+                        <span style="display:block;font-size:15px;font-weight:700;letter-spacing:-0.01em;white-space:nowrap;">@job.Name</span>
+                        <span style="display:block;font-size:11.5px;color:var(--text-mute);">@state · @job.DecimalPlaces dp</span>
+                    </span>
+                    <span style="color:var(--text-mute);margin-left:2px;"><Icon Name="chevD" Size="16" /></span>
+                </button>
+                @if (_jobMenu)
+                {
+                    <div @onclick="@(() => _jobMenu = false)" style="position:fixed;inset:0;z-index:140;"></div>
+                    <div style="position:absolute;top:calc(100% + 6px);left:0;width:264px;z-index:150;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);box-shadow:var(--sh-pop);padding:6px;animation:popIn .14s ease;">
+                        <div style="padding:4px 8px 6px;font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-mute);">Switch job</div>
+                        @foreach (var j in _jobs)
+                        {
+                            var on = j.Id == job.Id;
+                            <button class="menuitem focusable" @onclick="@(() => SelectJob(j.Id))"
+                                    style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:8px 10px;border-radius:var(--r-sm);border:none;cursor:pointer;
+                                           background:@(on ? "var(--accent-tint)" : "transparent");color:@(on ? "var(--accent-text)" : "var(--text)");font-size:13.5px;font-weight:500;">
+                                <span style="width:22px;height:22px;border-radius:6px;display:grid;place-items:center;font-weight:700;font-size:11px;
+                                             background:@(on ? "var(--accent)" : "var(--n-200)");color:@(on ? "#fff" : "var(--text-soft)");">@j.Name[0]</span>
+                                <span style="flex:1;">@j.Name</span>
+                                @if (on) { <Icon Name="check" Size="15" /> }
+                            </button>
+                        }
+                    </div>
+                }
+            </div>
+
+            @{ var shownFields = job.CustomFields.Where(f => f.ShowOnTimesheet).OrderBy(f => f.DisplayOrder).ToList(); }
+            @if (shownFields.Count > 0)
             {
-                <div @onclick="@(() => _jobMenu = false)" style="position:fixed;inset:0;z-index:140;"></div>
-                <div style="position:absolute;top:calc(100% + 6px);left:0;width:264px;z-index:150;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);box-shadow:var(--sh-pop);padding:6px;animation:popIn .14s ease;">
-                    <div style="padding:4px 8px 6px;font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-mute);">Switch job</div>
-                    @foreach (var j in Store.ActiveJobs)
+                <div class="ts-hide-narrow" style="display:flex;gap:8px;align-items:center;">
+                    @foreach (var f in shownFields)
                     {
-                        var on = j.Id == job.Id;
-                        <button class="menuitem focusable" @onclick="@(() => SelectJob(j.Id))"
-                                style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:8px 10px;border-radius:var(--r-sm);border:none;cursor:pointer;
-                                       background:@(on ? "var(--accent-tint)" : "transparent");color:@(on ? "var(--accent-text)" : "var(--text)");font-size:13.5px;font-weight:500;">
-                            <span style="width:22px;height:22px;border-radius:6px;display:grid;place-items:center;font-weight:700;font-size:11px;
-                                         background:@(on ? "var(--accent)" : "var(--n-200)");color:@(on ? "#fff" : "var(--text-soft)");">@j.Name[0]</span>
-                            <span style="flex:1;">@j.Name</span>
-                            @if (on) { <Icon Name="check" Size="15" /> }
-                        </button>
+                        <CopyField Name="@f.Name" Value="@f.Value" />
+                    }
+                </div>
+            }
+
+            <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
+                <a href="calendar" class="ts-btn focusable" style="display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;font-size:13px;font-weight:600;border-radius:var(--r-sm);border:1px solid var(--line-strong);background:var(--surface);color:var(--text);box-shadow:var(--sh-1);text-decoration:none;white-space:nowrap;">
+                    <Icon Name="calendar" Size="15" /> Month
+                </a>
+                <div style="display:flex;align-items:center;gap:2px;background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--r-md);padding:2px;box-shadow:var(--sh-1);">
+                    <button class="ts-iconbtn focusable" @onclick="@(() => ChangeWeek(-7))" title="Previous week"
+                            style="width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;border-radius:var(--r-sm);border:none;background:transparent;color:var(--text-soft);cursor:pointer;"><Icon Name="chevL" Size="17" /></button>
+                    <button @onclick="GoToday" class="focusable" style="min-width:168px;text-align:center;border:none;background:transparent;cursor:pointer;padding:0 8px;">
+                        <span style="display:block;font-size:13.5px;font-weight:700;">@CalendarFormat.Range(days[0], days[6])</span>
+                        <span style="display:block;font-size:10.5px;color:var(--text-mute);">@CalendarFormat.FyLabel(days[0]) · Week starts Mon</span>
+                    </button>
+                    <button class="ts-iconbtn focusable" @onclick="@(() => ChangeWeek(7))" title="Next week"
+                            style="width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;border-radius:var(--r-sm);border:none;background:transparent;color:var(--text-soft);cursor:pointer;"><Icon Name="chevR" Size="17" /></button>
+                </div>
+            </div>
+        </div>
+
+        <!-- table (desktop) -->
+        <div class="ts-hide-narrow" style="background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden;box-shadow:var(--sh-1);">
+            <div class="ts-hide-narrow" style="display:grid;grid-template-columns:@Tpl;padding:9px 16px;background:var(--surface-2);border-bottom:1px solid var(--line);">
+                @{ var heads = new[] { "Shift", "Break", "Project", "Notes", "Decimal", "h:mm", "" }; }
+                @for (var i = 0; i < heads.Length; i++)
+                {
+                    <span style="font-size:10.5px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-mute);text-align:@(i is 4 or 5 ? "right" : "left");">@heads[i]</span>
+                }
+            </div>
+
+            @foreach (var d in days)
+            {
+                var list = EntriesForDay(d);
+                var min = list.Sum(e => Math.Max(0, Calc.DurationMinutes(e)));
+                var isWork = job.WorkDays.HasFlag(FlagFor(d));
+                var isToday = d == _today;
+                var isHoliday = Holidays.IsPublicHoliday(d, state, out var holidayName);
+                var dim = !isWork && list.Count == 0;
+                var di = CalendarFormat.DowIndex(d);
+
+                <div style="border-bottom:1px solid var(--line);@(dim ? "background:repeating-linear-gradient(135deg, transparent, transparent 9px, rgba(0,0,0,0.012) 9px, rgba(0,0,0,0.012) 10px);" : "")">
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:@(list.Count > 0 ? "1px solid var(--line)" : "none");
+                                background:@(isHoliday ? "var(--holiday-tint)" : isToday ? "var(--accent-tint)" : "var(--surface)");">
+                        <div style="display:flex;align-items:center;gap:11px;min-width:0;">
+                            <div style="display:flex;flex-direction:column;align-items:center;width:40px;padding:3px 0;border-radius:var(--r-sm);
+                                        background:@(isToday ? "var(--accent)" : isHoliday ? "var(--holiday-tint)" : "transparent");
+                                        border:@(isToday ? "none" : isHoliday ? "1px solid var(--holiday-bd)" : "1px solid transparent");">
+                                <span style="font-size:10.5px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;
+                                             color:@(isToday ? "rgba(255,255,255,.85)" : isHoliday ? "var(--holiday)" : dim ? "var(--text-mute)" : "var(--text-soft)");">@CalendarFormat.DowShort[di]</span>
+                                <span class="tnum" style="font-size:17px;font-weight:700;line-height:1.05;color:@(isToday ? "#fff" : dim ? "var(--text-mute)" : "var(--text)");">@d.Day</span>
+                            </div>
+                            <div style="min-width:0;">
+                                <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;">
+                                    <span style="font-size:14px;font-weight:700;letter-spacing:-0.01em;color:@(dim ? "var(--text-soft)" : "var(--text)");">@CalendarFormat.DowFull[di]</span>
+                                    @if (isToday) { <Badge Tone="accent">Today</Badge> }
+                                    @if (!isWork) { <Badge Tone="outline">Rest day</Badge> }
+                                </div>
+                                @if (isHoliday)
+                                {
+                                    <div style="display:flex;align-items:center;gap:5px;margin-top:2px;">
+                                        <Icon Name="flag" Size="12" Stroke="2" Style="color:var(--holiday);" />
+                                        <span style="font-size:12px;font-weight:600;color:var(--holiday);">@holidayName</span>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:14px;">
+                            @if (list.Count > 0)
+                            {
+                                <div style="display:flex;align-items:center;gap:10px;">
+                                    <span class="mono" style="font-size:13px;color:var(--text-mute);">@HoursFormat.Hmm(min)</span>
+                                    <CopyValue Value="@HoursFormat.Decimal(min, job.DecimalPlaces)" Size="sm" Tone="accent" />
+                                </div>
+                            }
+                            else
+                            {
+                                <span style="font-size:12.5px;color:var(--text-mute);font-style:italic;">No entries</span>
+                            }
+                            <button class="ts-iconbtn focusable" @onclick="@(() => AddEntry(d))" title="Add entry"
+                                    style="width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border-radius:var(--r-sm);border:none;background:var(--n-100);color:var(--text-soft);cursor:pointer;"><Icon Name="plus" Size="16" /></button>
+                        </div>
+                    </div>
+
+                    @foreach (var e in list)
+                    {
+                        var dur = Calc.DurationMinutes(e);
+                        var valid = dur > 0;
+                        var pc = e.ProjectCode;
+                        <div class="te-row" @onclick="@(() => EditEntry(e))"
+                             style="display:grid;grid-template-columns:@Tpl;align-items:center;padding:9px 16px;cursor:pointer;border-top:1px solid var(--n-50);">
+                            <span class="mono" style="font-size:13.5px;font-weight:600;display:flex;align-items:center;gap:6px;">
+                                @e.StartTime.ToString("HH:mm")<span style="color:var(--text-mute);">–</span>@e.EndTime.ToString("HH:mm")
+                                @if (e.EndsNextDay)
+                                {
+                                    <span title="Crosses midnight" style="font-size:10px;font-weight:700;color:var(--holiday);background:var(--holiday-tint);border:1px solid var(--holiday-bd);border-radius:4px;padding:0 4px;">+1d</span>
+                                }
+                            </span>
+                            <span class="mono" style="font-size:13px;color:@(e.BreakMinutes > 0 ? "var(--text-soft)" : "var(--text-mute)");">@(e.BreakMinutes > 0 ? $"{e.BreakMinutes}m" : "—")</span>
+                            <span>
+                                @if (pc is not null) { <Tag>@pc.Code</Tag> } else { <span style="color:var(--text-mute);">—</span> }
+                            </span>
+                            <span style="font-size:13px;color:@(valid ? "var(--text-soft)" : "var(--danger)");overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:12px;">
+                                @if (valid) { @(string.IsNullOrEmpty(e.Notes) ? "—" : e.Notes) } else { @("Invalid: end before start") }
+                            </span>
+                            <span style="justify-self:end;">
+                                @if (valid) { <CopyValue Value="@HoursFormat.Decimal(dur, job.DecimalPlaces)" Size="sm" /> } else { <Badge Tone="danger" IconName="info">check</Badge> }
+                            </span>
+                            <span class="mono" style="font-size:13px;color:var(--text-soft);justify-self:end;">@(valid ? HoursFormat.Hmm(dur) : "—")</span>
+                            <span class="te-act" style="justify-self:end;color:var(--text-mute);"><Icon Name="chevR" Size="16" /></span>
+                        </div>
                     }
                 </div>
             }
         </div>
 
-        @{ var shownFields = job.CustomFields.Where(f => f.ShowOnTimesheet).OrderBy(f => f.DisplayOrder).ToList(); }
-        @if (shownFields.Count > 0)
-        {
-            <div class="ts-hide-narrow" style="display:flex;gap:8px;align-items:center;">
-                @foreach (var f in shownFields)
-                {
-                    <CopyField Name="@f.Name" Value="@f.Value" />
-                }
-            </div>
-        }
-
-        <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
-            <a href="calendar" class="ts-btn focusable" style="display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;font-size:13px;font-weight:600;border-radius:var(--r-sm);border:1px solid var(--line-strong);background:var(--surface);color:var(--text);box-shadow:var(--sh-1);text-decoration:none;white-space:nowrap;">
-                <Icon Name="calendar" Size="15" /> Month
-            </a>
-            <div style="display:flex;align-items:center;gap:2px;background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--r-md);padding:2px;box-shadow:var(--sh-1);">
-                <button class="ts-iconbtn focusable" @onclick="@(() => ChangeWeek(-7))" title="Previous week"
-                        style="width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;border-radius:var(--r-sm);border:none;background:transparent;color:var(--text-soft);cursor:pointer;"><Icon Name="chevL" Size="17" /></button>
-                <button @onclick="GoToday" class="focusable" style="min-width:168px;text-align:center;border:none;background:transparent;cursor:pointer;padding:0 8px;">
-                    <span style="display:block;font-size:13.5px;font-weight:700;">@CalendarFormat.Range(days[0], days[6])</span>
-                    <span style="display:block;font-size:10.5px;color:var(--text-mute);">@CalendarFormat.FyLabel(days[0]) · Week starts Mon</span>
-                </button>
-                <button class="ts-iconbtn focusable" @onclick="@(() => ChangeWeek(7))" title="Next week"
-                        style="width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;border-radius:var(--r-sm);border:none;background:transparent;color:var(--text-soft);cursor:pointer;"><Icon Name="chevR" Size="17" /></button>
-            </div>
-        </div>
-    </div>
-
-    <!-- table -->
-    <div style="background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden;box-shadow:var(--sh-1);">
-        <div style="display:grid;grid-template-columns:@Tpl;padding:9px 16px;background:var(--surface-2);border-bottom:1px solid var(--line);">
-            @{ var heads = new[] { "Shift", "Break", "Project", "Notes", "Decimal", "h:mm", "" }; }
-            @for (var i = 0; i < heads.Length; i++)
+        <!-- cards (mobile) -->
+        <div class="ts-only-narrow" style="flex-direction:column;gap:12px;">
+            @foreach (var d in days)
             {
-                <span style="font-size:10.5px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-mute);text-align:@(i is 4 or 5 ? "right" : "left");">@heads[i]</span>
-            }
-        </div>
-
-        @foreach (var d in days)
-        {
-            var list = Store.EntriesFor(job.Id, d);
-            var min = list.Sum(e => Math.Max(0, Calc.DurationMinutes(e)));
-            var isWork = job.WorkDays.HasFlag(FlagFor(d));
-            var isToday = d == Store.Today;
-            var isHoliday = Holidays.IsPublicHoliday(d, state, out var holidayName);
-            var dim = !isWork && list.Count == 0;
-            var di = CalendarFormat.DowIndex(d);
-
-            <div style="border-bottom:1px solid var(--line);@(dim ? "background:repeating-linear-gradient(135deg, transparent, transparent 9px, rgba(0,0,0,0.012) 9px, rgba(0,0,0,0.012) 10px);" : "")">
-                <!-- day header -->
-                <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:@(list.Count > 0 ? "1px solid var(--line)" : "none");
-                            background:@(isHoliday ? "var(--holiday-tint)" : isToday ? "var(--accent-tint)" : "var(--surface)");">
-                    <!-- day label -->
-                    <div style="display:flex;align-items:center;gap:11px;min-width:0;">
-                        <div style="display:flex;flex-direction:column;align-items:center;width:40px;padding:3px 0;border-radius:var(--r-sm);
-                                    background:@(isToday ? "var(--accent)" : isHoliday ? "var(--holiday-tint)" : "transparent");
-                                    border:@(isToday ? "none" : isHoliday ? "1px solid var(--holiday-bd)" : "1px solid transparent");">
-                            <span style="font-size:10.5px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;
-                                         color:@(isToday ? "rgba(255,255,255,.85)" : isHoliday ? "var(--holiday)" : dim ? "var(--text-mute)" : "var(--text-soft)");">@CalendarFormat.DowShort[di]</span>
-                            <span class="tnum" style="font-size:17px;font-weight:700;line-height:1.05;color:@(isToday ? "#fff" : dim ? "var(--text-mute)" : "var(--text)");">@d.Day</span>
-                        </div>
-                        <div style="min-width:0;">
-                            <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;">
-                                <span style="font-size:14px;font-weight:700;letter-spacing:-0.01em;color:@(dim ? "var(--text-soft)" : "var(--text)");">@CalendarFormat.DowFull[di]</span>
+                var list = EntriesForDay(d);
+                var min = list.Sum(e => Math.Max(0, Calc.DurationMinutes(e)));
+                var isWork = job.WorkDays.HasFlag(FlagFor(d));
+                var isToday = d == _today;
+                var isHoliday = Holidays.IsPublicHoliday(d, state, out var holidayName);
+                var di = CalendarFormat.DowIndex(d);
+                <div style="background:var(--surface);border:1px solid @(isToday ? "var(--accent)" : "var(--line)");border-radius:var(--r-lg);overflow:hidden;box-shadow:var(--sh-1);">
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--line);
+                                background:@(isHoliday ? "var(--holiday-tint)" : isToday ? "var(--accent-tint)" : "var(--surface-2)");">
+                        <div>
+                            <div style="display:flex;align-items:center;gap:7px;">
+                                <span style="font-size:15px;font-weight:700;">@CalendarFormat.DowShort[di] @d.Day</span>
                                 @if (isToday) { <Badge Tone="accent">Today</Badge> }
                                 @if (!isWork) { <Badge Tone="outline">Rest day</Badge> }
                             </div>
@@ -131,85 +213,74 @@
                                 </div>
                             }
                         </div>
+                        @if (list.Count > 0) { <CopyValue Value="@HoursFormat.Decimal(min, job.DecimalPlaces)" Size="md" Tone="accent" /> }
                     </div>
-                    <!-- day total -->
-                    <div style="display:flex;align-items:center;gap:14px;">
-                        @if (list.Count > 0)
+                    <div style="padding:8px;display:flex;flex-direction:column;gap:6px;">
+                        @foreach (var e in list)
                         {
-                            <div style="display:flex;align-items:center;gap:10px;">
-                                <span class="mono" style="font-size:13px;color:var(--text-mute);">@HoursFormat.Hmm(min)</span>
-                                <CopyValue Value="@HoursFormat.Decimal(min, job.DecimalPlaces)" Size="sm" Tone="accent" />
+                            var dur = Calc.DurationMinutes(e);
+                            var valid = dur > 0;
+                            var pc = e.ProjectCode;
+                            <div class="te-card" @onclick="@(() => EditEntry(e))" style="padding:9px 11px;border-radius:var(--r-md);border:1px solid var(--line);cursor:pointer;background:@(valid ? "var(--surface)" : "var(--danger-tint)");">
+                                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                                    <span class="mono" style="font-size:14px;font-weight:600;display:flex;align-items:center;gap:6px;">
+                                        @e.StartTime.ToString("HH:mm")<span style="color:var(--text-mute);">–</span>@e.EndTime.ToString("HH:mm")
+                                        @if (e.EndsNextDay) { <span style="font-size:9.5px;font-weight:700;color:var(--holiday);background:var(--holiday-tint);border:1px solid var(--holiday-bd);border-radius:4px;padding:0 4px;">+1d</span> }
+                                    </span>
+                                    @if (valid) { <CopyValue Value="@HoursFormat.Decimal(dur, job.DecimalPlaces)" Size="sm" /> }
+                                </div>
+                                <div style="display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap;">
+                                    @if (pc is not null) { <Tag>@pc.Code</Tag> }
+                                    @if (e.BreakMinutes > 0) { <span class="mono" style="font-size:11.5px;color:var(--text-mute);">break @(e.BreakMinutes)m</span> }
+                                    <span class="mono" style="font-size:11.5px;color:var(--text-mute);margin-left:auto;">@(valid ? HoursFormat.Hmm(dur) : "invalid")</span>
+                                </div>
+                                @if (!string.IsNullOrEmpty(e.Notes)) { <div style="font-size:12.5px;color:var(--text-soft);margin-top:6px;line-height:1.4;">@e.Notes</div> }
                             </div>
                         }
-                        else
-                        {
-                            <span style="font-size:12.5px;color:var(--text-mute);font-style:italic;">No entries</span>
-                        }
-                        <button class="ts-iconbtn focusable" @onclick="@(() => AddEntry(d))" title="Add entry"
-                                style="width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border-radius:var(--r-sm);border:none;background:var(--n-100);color:var(--text-soft);cursor:pointer;"><Icon Name="plus" Size="16" /></button>
+                        <button class="focusable" @onclick="@(() => AddEntry(d))"
+                                style="display:flex;align-items:center;justify-content:center;gap:7px;padding:9px;border-radius:var(--r-md);border:1px dashed var(--line-strong);background:transparent;cursor:pointer;color:var(--text-soft);font-size:13px;font-weight:600;">
+                            <Icon Name="plus" Size="15" /> Add entry
+                        </button>
                     </div>
                 </div>
-
-                @foreach (var e in list)
-                {
-                    var dur = Calc.DurationMinutes(e);
-                    var valid = dur > 0;
-                    var pc = e.ProjectCodeId is { } pid ? job.ProjectCodes.FirstOrDefault(c => c.Id == pid) : null;
-                    <div class="te-row" @onclick="@(() => EditEntry(e))"
-                         style="display:grid;grid-template-columns:@Tpl;align-items:center;padding:9px 16px;cursor:pointer;border-top:1px solid var(--n-50);">
-                        <span class="mono" style="font-size:13.5px;font-weight:600;display:flex;align-items:center;gap:6px;">
-                            @e.StartTime.ToString("HH:mm")<span style="color:var(--text-mute);">–</span>@e.EndTime.ToString("HH:mm")
-                            @if (e.EndsNextDay)
-                            {
-                                <span title="Crosses midnight" style="font-size:10px;font-weight:700;color:var(--holiday);background:var(--holiday-tint);border:1px solid var(--holiday-bd);border-radius:4px;padding:0 4px;">+1d</span>
-                            }
-                        </span>
-                        <span class="mono" style="font-size:13px;color:@(e.BreakMinutes > 0 ? "var(--text-soft)" : "var(--text-mute)");">@(e.BreakMinutes > 0 ? $"{e.BreakMinutes}m" : "—")</span>
-                        <span>
-                            @if (pc is not null) { <Tag>@pc.Code</Tag> } else { <span style="color:var(--text-mute);">—</span> }
-                        </span>
-                        <span style="font-size:13px;color:@(valid ? "var(--text-soft)" : "var(--danger)");overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:12px;">
-                            @if (valid) { @(string.IsNullOrEmpty(e.Notes) ? "—" : e.Notes) } else { @("Invalid: end before start") }
-                        </span>
-                        <span style="justify-self:end;">
-                            @if (valid) { <CopyValue Value="@HoursFormat.Decimal(dur, job.DecimalPlaces)" Size="sm" /> } else { <Badge Tone="danger" IconName="info">check</Badge> }
-                        </span>
-                        <span class="mono" style="font-size:13px;color:var(--text-soft);justify-self:end;">@(valid ? HoursFormat.Hmm(dur) : "—")</span>
-                        <span class="te-act" style="justify-self:end;color:var(--text-mute);"><Icon Name="chevR" Size="16" /></span>
-                    </div>
-                }
-            </div>
-        }
-    </div>
-
-    <!-- week total -->
-    @{ var weekMin = days.Sum(d => Store.EntriesFor(job.Id, d).Sum(e => Math.Max(0, Calc.DurationMinutes(e)))); }
-    <div style="display:flex;align-items:center;gap:16px;padding:16px 20px;border-radius:var(--r-lg);background:var(--n-900);color:#fff;box-shadow:var(--sh-2);flex-wrap:wrap;">
-        <div style="display:flex;flex-direction:column;">
-            <span style="font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--n-400);">Week total</span>
-            <span style="font-size:13px;color:var(--n-300);">@CalendarFormat.Range(days[0], days[6])</span>
+            }
         </div>
-        <div style="margin-left:auto;display:flex;align-items:center;gap:22px;">
-            <div style="text-align:right;">
-                <div style="font-size:10.5px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--n-400);">Duration</div>
-                <div class="mono" style="font-size:22px;font-weight:700;">@HoursFormat.Hmm(weekMin)</div>
+
+        <!-- week total -->
+        @{ var weekMin = days.Sum(d => EntriesForDay(d).Sum(e => Math.Max(0, Calc.DurationMinutes(e)))); }
+        <div style="display:flex;align-items:center;gap:16px;padding:16px 20px;border-radius:var(--r-lg);background:var(--n-900);color:#fff;box-shadow:var(--sh-2);flex-wrap:wrap;">
+            <div style="display:flex;flex-direction:column;">
+                <span style="font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--n-400);">Week total</span>
+                <span style="font-size:13px;color:var(--n-300);">@CalendarFormat.Range(days[0], days[6])</span>
             </div>
-            <div style="text-align:right;">
-                <div style="font-size:10.5px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--n-400);margin-bottom:3px;">Decimal · copy</div>
-                <CopyValue Value="@HoursFormat.Decimal(weekMin, job.DecimalPlaces)" Size="lg" Tone="accent" />
+            <div style="margin-left:auto;display:flex;align-items:center;gap:22px;">
+                <div style="text-align:right;">
+                    <div style="font-size:10.5px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--n-400);">Duration</div>
+                    <div class="mono" style="font-size:22px;font-weight:700;">@HoursFormat.Hmm(weekMin)</div>
+                </div>
+                <div style="text-align:right;">
+                    <div style="font-size:10.5px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--n-400);margin-bottom:3px;">Decimal · copy</div>
+                    <CopyValue Value="@HoursFormat.Decimal(weekMin, job.DecimalPlaces)" Size="lg" Tone="accent" />
+                </div>
             </div>
         </div>
     </div>
-</div>
 
-<EntryEditor Open="_editorOpen" Draft="_draft" IsNew="_draftIsNew" Job="@Store.GetJob(_selectedJobId)"
-             OnSaveEntry="SaveEntry" OnDeleteEntry="DeleteEntry" OnCloseEditor="@(() => _editorOpen = false)" />
+    <EntryEditor Open="_editorOpen" Draft="_draft" IsNew="_draftIsNew" Job="_job"
+                 OnSaveEntry="SaveEntry" OnDeleteEntry="DeleteEntry" OnCloseEditor="@(() => _editorOpen = false)" />
+}
 
 @code {
     private const string Tpl = "188px 78px 128px minmax(150px,1fr) 112px 66px 36px";
 
-    private Guid _selectedJobId;
+    private AppUser _user = null!;
+    private IReadOnlyList<Job> _jobs = [];
+    private Job? _job;
+    private AustralianState _state;
     private DateOnly _week;
+    private DateOnly _today;
+    private Dictionary<DateOnly, List<TimeEntry>> _entriesByDay = new();
+
     private bool _jobMenu;
     private bool _showNote = true;
 
@@ -217,10 +288,56 @@
     private bool _draftIsNew;
     private TimeEntry? _draft;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        _selectedJobId = Store.ActiveJobs[0].Id;
-        _week = CalendarFormat.StartOfWeek(Store.Today);
+        _today = Data.Today;
+        _week = CalendarFormat.StartOfWeek(WeekFromQuery() ?? _today);
+        _user = await Data.CurrentUserAsync();
+        _jobs = await Data.ActiveJobsAsync();
+        if (_jobs.Count > 0) await SelectJob(_jobs[0].Id);
+    }
+
+    private DateOnly? WeekFromQuery()
+    {
+        var uri = new Uri(Nav.Uri);
+        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+        if (query.TryGetValue("week", out var v) && DateOnly.TryParse(v.ToString(), out var d)) return d;
+        return null;
+    }
+
+    private List<TimeEntry> EntriesForDay(DateOnly d) =>
+        _entriesByDay.TryGetValue(d, out var l) ? l : [];
+
+    private async Task LoadWeekAsync()
+    {
+        if (_job is null) return;
+        var days = CalendarFormat.WeekDates(_week);
+        var entries = await Data.EntriesAsync(_job.Id, days[0], days[6]);
+        _entriesByDay = days.ToDictionary(d => d, _ => new List<TimeEntry>());
+        foreach (var e in entries)
+        {
+            if (_entriesByDay.TryGetValue(e.WorkDate, out var l)) l.Add(e);
+        }
+    }
+
+    private async Task SelectJob(Guid id)
+    {
+        _jobMenu = false;
+        _job = await Data.JobAsync(id);
+        if (_job is not null) _state = Data.EffectiveState(_job, _user);
+        await LoadWeekAsync();
+    }
+
+    private async Task ChangeWeek(int days)
+    {
+        _week = CalendarFormat.StartOfWeek(_week.AddDays(days));
+        await LoadWeekAsync();
+    }
+
+    private async Task GoToday()
+    {
+        _week = CalendarFormat.StartOfWeek(_today);
+        await LoadWeekAsync();
     }
 
     private static DaysOfWeek FlagFor(DateOnly d) => d.DayOfWeek switch
@@ -234,19 +351,15 @@
         _ => DaysOfWeek.Sunday,
     };
 
-    private void SelectJob(Guid id) { _selectedJobId = id; _jobMenu = false; }
-    private void ChangeWeek(int days) => _week = CalendarFormat.StartOfWeek(_week.AddDays(days));
-    private void GoToday() => _week = CalendarFormat.StartOfWeek(Store.Today);
-
     private void EditEntry(TimeEntry e) { _draft = e; _draftIsNew = false; _editorOpen = true; }
 
     private void AddEntry(DateOnly date)
     {
-        var last = Store.EntriesFor(_selectedJobId, date).LastOrDefault();
+        var last = EntriesForDay(date).LastOrDefault();
         _draft = new TimeEntry
         {
             Id = Guid.NewGuid(),
-            JobId = _selectedJobId,
+            JobId = _job!.Id,
             WorkDate = date,
             StartTime = last?.EndTime ?? new TimeOnly(9, 0),
             EndTime = new TimeOnly(17, 0),
@@ -257,6 +370,15 @@
         _editorOpen = true;
     }
 
-    private void SaveEntry(TimeEntry e) => Store.Save(_selectedJobId, e);
-    private void DeleteEntry(Guid id) => Store.Delete(_selectedJobId, id);
+    private async Task SaveEntry(TimeEntry e)
+    {
+        await Data.SaveEntryAsync(_job!.Id, e);
+        await LoadWeekAsync();
+    }
+
+    private async Task DeleteEntry(Guid id)
+    {
+        await Data.DeleteEntryAsync(_job!.Id, id);
+        await LoadWeekAsync();
+    }
 }

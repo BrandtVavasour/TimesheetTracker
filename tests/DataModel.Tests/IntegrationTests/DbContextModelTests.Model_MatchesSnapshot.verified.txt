@@ -123,6 +123,7 @@ Model:
     Indexes: 
       UserId
     Annotations: 
+      QueryFilter: Microsoft.EntityFrameworkCore.Metadata.Internal.QueryFilterCollection
       Relational:FunctionName: 
       Relational:Schema: 
       Relational:SqlQuery: 
@@ -166,6 +167,7 @@ Model:
     Indexes: 
       JobId
     Annotations: 
+      QueryFilter: Microsoft.EntityFrameworkCore.Metadata.Internal.QueryFilterCollection
       Relational:FunctionName: 
       Relational:Schema: 
       Relational:SqlQuery: 
@@ -367,6 +369,7 @@ Model:
     Indexes: 
       JobId
     Annotations: 
+      QueryFilter: Microsoft.EntityFrameworkCore.Metadata.Internal.QueryFilterCollection
       Relational:FunctionName: 
       Relational:Schema: 
       Relational:SqlQuery: 
@@ -421,6 +424,7 @@ Model:
       ProjectCodeId
       JobId, WorkDate
     Annotations: 
+      QueryFilter: Microsoft.EntityFrameworkCore.Metadata.Internal.QueryFilterCollection
       Relational:FunctionName: 
       Relational:Schema: 
       Relational:SqlQuery: 

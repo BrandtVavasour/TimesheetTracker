@@ -130,9 +130,21 @@ textarea:focus-visible,
 @keyframes popIn { from { opacity: 0; transform: translateY(6px) scale(0.98); } to { opacity: 1; transform: none; } }
 @keyframes flashCopied { 0% { transform: scale(1);} 35% { transform: scale(1.12);} 100% { transform: scale(1);} }
 
-/* responsive: collapse table to stacked rows on narrow screens */
+/* form inputs */
+.input { height:36px; width:100%; padding:0 10px; border-radius:var(--r-sm); border:1px solid var(--line-strong);
+  background:var(--surface); color:var(--text); font-size:14px; outline:none; transition:border-color .14s; }
+.input:focus { border-color: var(--accent); }
+select.input { appearance:none; -webkit-appearance:none; padding-right:30px; cursor:pointer; }
+textarea.input { height:auto; padding:8px 10px; resize:vertical; line-height:1.45; }
+
+/* responsive: collapse table to stacked day cards on narrow screens */
+.ts-only-narrow { display: none; }
+.te-card { transition: border-color .12s, box-shadow .12s; }
+.te-card:hover { border-color: var(--accent) !important; box-shadow: var(--sh-1); }
 @media (max-width: 820px) {
   .ts-hide-narrow { display: none !important; }
+  .ts-only-narrow { display: flex !important; }
+  .ts-export-grid, .ts-jobs-grid { grid-template-columns: 1fr !important; }
 }
 
 /* Blazor error UI */

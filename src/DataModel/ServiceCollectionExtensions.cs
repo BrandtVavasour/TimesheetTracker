@@ -7,9 +7,9 @@ namespace TimesheetTracker.DataModel;
 
 public static class ServiceCollectionExtensions
 {
-    public static IServiceCollection AddTimesheetDataModel(this IServiceCollection services, string connectionString)
+    public static IServiceCollection AddTimesheetDataModel(this IServiceCollection services, Action<DbContextOptionsBuilder> configureDb)
     {
-        services.AddDbContext<TimesheetDbContext>(o => o.UseNpgsql(connectionString));
+        services.AddDbContext<TimesheetDbContext>(configureDb);
         services.AddScoped<ITimeCalculationService, TimeCalculationService>();
         services.AddScoped<IHolidayService, HolidayService>();
         services.AddScoped<IExportService, ExportService>();

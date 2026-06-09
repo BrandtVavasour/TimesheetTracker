@@ -1,5 +1,161 @@
 @page "/calendar"
+@rendermode InteractiveServer
+@inject ITimesheetData Data
+@inject ITimeCalculationService Calc
+@inject IHolidayService Holidays
+@inject NavigationManager Nav
 
 <PageHead Title="Calendar" Subtitle="Navigate months and open a week into the timesheet." />
-<ComingSoon Icon="calendar" Title="Month calendar — next up"
-            ChildText="Month grid with public-holiday dots and logged-hour bars; click a week to load it into the timesheet." />
+
+@if (_job is null)
+{
+    <div style="margin-top:22px;color:var(--text-mute);">Loading…</div>
+}
+else
+{
+    var cells = MonthMatrix(_viewMonth);
+    var monthMin = cells.Where(d => d.Month == _viewMonth.Month).Sum(MinFor);
+
+    <div style="display:flex;flex-direction:column;gap:16px;padding:22px 0 40px;">
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+            <div>
+                <h2 style="margin:0;font-size:22px;font-weight:700;letter-spacing:-0.02em;">@System.Globalization.CultureInfo.InvariantCulture.DateTimeFormat.GetMonthName(_viewMonth.Month) @_viewMonth.Year</h2>
+                <div style="font-size:13px;color:var(--text-soft);">@_job.Name · @_state · @CalendarFormat.FyLabel(_viewMonth)</div>
+            </div>
+            <div style="margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                <select class="input" style="max-width:220px;" value="@_jobId" @onchange="OnJobChange">
+                    @foreach (var j in _jobs)
+                    {
+                        <option value="@j.Id">@j.Name</option>
+                    }
+                </select>
+                <div style="display:flex;align-items:center;gap:8px;padding:7px 12px;border-radius:var(--r-md);background:var(--surface);border:1px solid var(--line);">
+                    <span style="font-size:11px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:var(--text-mute);">This month</span>
+                    <CopyValue Value="@HoursFormat.Decimal(monthMin, _job.DecimalPlaces)" Size="sm" Tone="accent" />
+                    <span class="mono" style="font-size:12.5px;color:var(--text-soft);">@HoursFormat.Hmm(monthMin)</span>
+                </div>
+                <Btn Variant="outline" Size="sm" OnClick="@(() => GoMonth(99))">Today</Btn>
+                <div style="display:flex;align-items:center;gap:2px;background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--r-md);padding:2px;box-shadow:var(--sh-1);">
+                    <button class="ts-iconbtn focusable" @onclick="@(() => GoMonth(-1))" title="Previous month"
+                            style="width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;border-radius:var(--r-sm);border:none;background:transparent;color:var(--text-soft);cursor:pointer;"><Icon Name="chevL" Size="17" /></button>
+                    <button class="ts-iconbtn focusable" @onclick="@(() => GoMonth(1))" title="Next month"
+                            style="width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;border-radius:var(--r-sm);border:none;background:transparent;color:var(--text-soft);cursor:pointer;"><Icon Name="chevR" Size="17" /></button>
+                </div>
+            </div>
+        </div>
+
+        <div style="background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden;box-shadow:var(--sh-1);">
+            <div style="display:grid;grid-template-columns:44px repeat(7, 1fr);border-bottom:1px solid var(--line);background:var(--surface-2);">
+                <div></div>
+                @for (var i = 0; i < 7; i++)
+                {
+                    <div style="padding:9px 12px;font-size:11px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:@(i >= 5 ? "var(--text-mute)" : "var(--text-soft)");border-left:1px solid var(--line);">@CalendarFormat.DowShort[i]</div>
+                }
+            </div>
+            @for (var w = 0; w < 6; w++)
+            {
+                var week = cells.Skip(w * 7).Take(7).ToList();
+                var wkStart = CalendarFormat.StartOfWeek(week[0]);
+                var isSel = wkStart == _selectedWeek;
+                var wkMin = week.Sum(MinFor);
+                <div class="cal-week" style="display:grid;grid-template-columns:44px repeat(7, 1fr);border-bottom:@(w < 5 ? "1px solid var(--line)" : "none");background:@(isSel ? "var(--accent-tint)" : "transparent");">
+                    <button class="focusable cal-load" title="Open this week" @onclick="@(() => OpenWeek(wkStart))"
+                            style="border:none;border-right:1px solid var(--line);cursor:pointer;background:@(isSel ? "var(--accent)" : "transparent");color:@(isSel ? "#fff" : "var(--text-mute)");display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:4px 0;">
+                        <Icon Name="arrowR" Size="15" />
+                        @if (wkMin > 0) { <span class="mono" style="font-size:9.5px;font-weight:700;line-height:1;">@(wkMin / 60)h</span> }
+                    </button>
+                    @foreach (var d in week)
+                    {
+                        var inMonth = d.Month == _viewMonth.Month;
+                        var di = CalendarFormat.DowIndex(d);
+                        var min = MinFor(d);
+                        var isHoliday = Holidays.IsPublicHoliday(d, _state, out var holidayName);
+                        var isToday = d == _today;
+                        var isWork = _job.WorkDays.HasFlag((DaysOfWeek)(1 << di));
+                        <button class="focusable cal-day" @onclick="@(() => OpenWeek(wkStart))"
+                                style="text-align:left;border:none;border-left:1px solid var(--line);min-height:92px;padding:7px 9px;cursor:pointer;
+                                       background:@(isHoliday && inMonth ? "var(--holiday-tint)" : "transparent");opacity:@(inMonth ? "1" : "0.4");display:flex;flex-direction:column;gap:5px;">
+                            <div style="display:flex;align-items:center;justify-content:space-between;">
+                                <span class="tnum" style="font-size:13.5px;font-weight:@(isToday ? "700" : "600");width:24px;height:24px;display:grid;place-items:center;border-radius:99px;
+                                             background:@(isToday ? "var(--accent)" : "transparent");color:@(isToday ? "#fff" : !isWork ? "var(--text-mute)" : "var(--text)");">@d.Day</span>
+                                @if (isHoliday) { <span title="@holidayName" style="width:7px;height:7px;border-radius:99px;background:var(--holiday);"></span> }
+                            </div>
+                            @if (isHoliday && inMonth)
+                            {
+                                <span style="font-size:10px;font-weight:600;color:var(--holiday);line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">@holidayName</span>
+                            }
+                            @if (min > 0)
+                            {
+                                <span style="margin-top:auto;display:inline-flex;align-items:center;gap:5px;">
+                                    <span style="height:5px;border-radius:99px;background:var(--accent);width:@(Math.Max(14, Math.Min(58, min / 600.0 * 58)))px;"></span>
+                                    <span class="mono" style="font-size:11px;font-weight:600;color:var(--accent-text);">@HoursFormat.Decimal(min, _job.DecimalPlaces)</span>
+                                </span>
+                            }
+                        </button>
+                    }
+                </div>
+            }
+        </div>
+
+        <div style="display:flex;gap:18px;flex-wrap:wrap;font-size:12.5px;color:var(--text-soft);">
+            <span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:12px;height:12px;border-radius:99px;background:var(--accent);"></span> Today</span>
+            <span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:12px;height:12px;border-radius:3px;background:var(--holiday-tint);border:1px solid var(--holiday-bd);"></span> Public holiday (@_state)</span>
+            <span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:12px;height:5px;border-radius:99px;background:var(--accent);"></span> Logged hours</span>
+            <span style="display:inline-flex;align-items:center;gap:6px;"><Icon Name="arrowR" Size="13" /> Open week in timesheet</span>
+        </div>
+    </div>
+}
+
+@code {
+    private IReadOnlyList<Job> _jobs = [];
+    private Job? _job;
+    private Guid _jobId;
+    private AppUser _user = null!;
+    private AustralianState _state;
+    private DateOnly _viewMonth;     // first of the month
+    private DateOnly _today;
+    private DateOnly _selectedWeek;
+    private Dictionary<DateOnly, int> _minByDay = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _today = Data.Today;
+        _viewMonth = new DateOnly(_today.Year, _today.Month, 1);
+        _selectedWeek = CalendarFormat.StartOfWeek(_today);
+        _user = await Data.CurrentUserAsync();
+        _jobs = await Data.ActiveJobsAsync();
+        if (_jobs.Count > 0) { _jobId = _jobs[0].Id; await LoadAsync(); }
+    }
+
+    private static IReadOnlyList<DateOnly> MonthMatrix(DateOnly viewMonth)
+    {
+        var start = CalendarFormat.StartOfWeek(new DateOnly(viewMonth.Year, viewMonth.Month, 1));
+        return Enumerable.Range(0, 42).Select(start.AddDays).ToList();
+    }
+
+    private int MinFor(DateOnly d) => _minByDay.TryGetValue(d, out var m) ? m : 0;
+
+    private async Task LoadAsync()
+    {
+        _job = await Data.JobAsync(_jobId);
+        if (_job is null) return;
+        _state = Data.EffectiveState(_job, _user);
+        var cells = MonthMatrix(_viewMonth);
+        var entries = await Data.EntriesAsync(_job.Id, cells[0], cells[^1]);
+        _minByDay = entries.GroupBy(e => e.WorkDate)
+            .ToDictionary(g => g.Key, g => g.Sum(e => Math.Max(0, Calc.DurationMinutes(e))));
+    }
+
+    private async Task OnJobChange(ChangeEventArgs e)
+    {
+        if (Guid.TryParse(e.Value?.ToString(), out var id)) { _jobId = id; await LoadAsync(); }
+    }
+
+    private async Task GoMonth(int dir)
+    {
+        _viewMonth = dir == 99 ? new DateOnly(_today.Year, _today.Month, 1) : _viewMonth.AddMonths(dir);
+        await LoadAsync();
+    }
+
+    private void OpenWeek(DateOnly weekStart) => Nav.NavigateTo($"/?week={weekStart:yyyy-MM-dd}");
+}

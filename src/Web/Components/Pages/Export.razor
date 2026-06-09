@@ -1,5 +1,212 @@
 @page "/export"
+@rendermode InteractiveServer
+@inject ITimesheetData Data
+@inject ITimeCalculationService Calc
+@inject IExportService ExportSvc
+@inject IJSRuntime JS
+@using TimesheetTracker.DataModel.Services.Export
 
 <PageHead Title="Export" Subtitle="Download a week, month, or financial year as a worksheet." />
-<ComingSoon Icon="download" Title="Export — next up"
-            ChildText="Pick a job and scope (week / month / financial year), preview, and download the .xlsx via ExcelsiorClosedXml (export service already built and tested)." />
+
+@if (_job is null)
+{
+    <div style="margin-top:22px;color:var(--text-mute);">Loading…</div>
+}
+else
+{
+    <div style="display:grid;grid-template-columns:320px 1fr;gap:18px;align-items:start;padding:22px 0 40px;" class="ts-export-grid">
+        <!-- controls -->
+        <Card Title="Export">
+            <div style="display:flex;flex-direction:column;gap:18px;">
+                <Field Label="Job">
+                    <select class="input" value="@_jobId" @onchange="OnJobChange">
+                        @foreach (var j in _jobs)
+                        {
+                            <option value="@j.Id">@j.Name</option>
+                        }
+                    </select>
+                </Field>
+                <Field Label="Scope">
+                    <div style="display:flex;gap:6px;">
+                        @foreach (var (val, label) in new[] { (ExportScope.Week, "Week"), (ExportScope.Month, "Month"), (ExportScope.FinancialYear, "Financial year") })
+                        {
+                            var on = _scope == val;
+                            <button class="focusable" @onclick="@(() => SetScope(val))"
+                                    style="flex:1;height:38px;border-radius:var(--r-sm);cursor:pointer;font-size:12.5px;font-weight:700;padding:0 4px;
+                                           border:1px solid @(on ? "var(--accent)" : "var(--line-strong)");background:@(on ? "var(--accent-tint)" : "var(--surface)");color:@(on ? "var(--accent-text)" : "var(--text-soft)");">@label</button>
+                        }
+                    </div>
+                </Field>
+                <Field Label="Period">
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <button class="ts-iconbtn focusable" @onclick="@(() => Step(-1))" title="Previous"
+                                style="width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;border-radius:var(--r-sm);border:1px solid var(--line-strong);background:var(--surface);color:var(--text-soft);cursor:pointer;"><Icon Name="chevL" Size="17" /></button>
+                        <div style="flex:1;text-align:center;font-size:13px;font-weight:600;padding:0 6px;">@RangeLabel()</div>
+                        <button class="ts-iconbtn focusable" @onclick="@(() => Step(1))" title="Next"
+                                style="width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;border-radius:var(--r-sm);border:1px solid var(--line-strong);background:var(--surface);color:var(--text-soft);cursor:pointer;"><Icon Name="chevR" Size="17" /></button>
+                    </div>
+                </Field>
+                <div style="height:1px;background:var(--line);"></div>
+                <div style="display:flex;flex-direction:column;gap:4px;">
+                    <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:var(--text-soft);">Entries</span><span class="mono" style="font-weight:600;">@_rows.Count</span></div>
+                    <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:var(--text-soft);">Total</span><span class="mono" style="font-weight:600;">@HoursFormat.Hmm(_totalMin)</span></div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;"><span style="color:var(--text-soft);">Decimal</span><CopyValue Value="@HoursFormat.Decimal(_totalMin, _job.DecimalPlaces)" Size="sm" Tone="accent" /></div>
+                </div>
+                <Btn Variant="primary" Size="lg" Icon="@(_done ? "check" : "download")" Disabled="@(_rows.Count == 0)" OnClick="Download">@(_done ? "Downloaded" : "Download .xlsx")</Btn>
+                <div style="font-size:11.5px;color:var(--text-mute);display:flex;gap:6px;align-items:flex-start;">
+                    <span style="margin-top:1px;flex:none;"><Icon Name="info" Size="13" /></span>
+                    <span>Generated via ExcelsiorClosedXml — a real .xlsx workbook with the columns previewed here.</span>
+                </div>
+            </div>
+        </Card>
+
+        <!-- preview -->
+        <div style="background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--sh-1);overflow:hidden;">
+            <div style="padding:18px 20px;border-bottom:1px solid var(--line);background:var(--surface-2);">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+                    <div>
+                        <div style="font-size:17px;font-weight:700;letter-spacing:-0.01em;">@_job.Name</div>
+                        <div style="font-size:13px;color:var(--text-soft);">@_user.DisplayName · @_state · @RangeLabel()</div>
+                    </div>
+                    <Badge Tone="neutral">Worksheet preview</Badge>
+                </div>
+                @{ var shown = _job.CustomFields.Where(f => f.ShowOnTimesheet).OrderBy(f => f.DisplayOrder).ToList(); }
+                @if (shown.Count > 0)
+                {
+                    <div style="display:flex;gap:18px;margin-top:12px;flex-wrap:wrap;">
+                        @foreach (var f in shown)
+                        {
+                            <span style="font-size:12.5px;"><span style="color:var(--text-mute);">@f.Name: </span><span class="mono" style="font-weight:600;">@f.Value</span></span>
+                        }
+                    </div>
+                }
+            </div>
+            <div style="overflow-x:auto;">
+                @if (_rows.Count == 0)
+                {
+                    <div style="padding:60px 20px;text-align:center;color:var(--text-mute);">
+                        <div style="margin-bottom:10px;display:flex;justify-content:center;"><Icon Name="calendar" Size="28" /></div>
+                        <div style="font-size:14px;">No entries in this period.</div>
+                    </div>
+                }
+                else
+                {
+                    <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                        <thead>
+                            <tr>
+                                @{ var heads = new[] { "Date", "Day", "Start", "End", "Break", "Decimal", "h:mm", "Project", "Notes", "Holiday" }; }
+                                @for (var i = 0; i < heads.Length; i++)
+                                {
+                                    <th style="text-align:@(i is >= 2 and <= 6 ? "right" : "left");padding:10px 14px;font-size:10.5px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:var(--text-mute);border-bottom:1px solid var(--line);white-space:nowrap;">@heads[i]</th>
+                                }
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var r in _rows)
+                            {
+                                var holiday = !string.IsNullOrEmpty(r.PublicHoliday);
+                                <tr style="background:@(holiday ? "var(--holiday-tint)" : "transparent");">
+                                    <td class="mono" style="@Td()">@r.Date[5..]</td>
+                                    <td style="@Td()">@r.Day[..3]</td>
+                                    <td class="mono" style="@Td("right")">@r.Start</td>
+                                    <td class="mono" style="@Td("right")">@r.End</td>
+                                    <td class="mono" style="@Td("right")color:var(--text-mute);">@(r.BreakMinutes > 0 ? r.BreakMinutes.ToString() : "—")</td>
+                                    <td class="mono" style="@Td("right")font-weight:700;color:var(--accent-text);">@r.DecimalHours.ToString("F" + _job.DecimalPlaces)</td>
+                                    <td class="mono" style="@Td("right")color:var(--text-soft);">@r.HoursMinutes</td>
+                                    <td style="@Td()">@if (!string.IsNullOrEmpty(r.ProjectCode)) { <Tag>@r.ProjectCode</Tag> } else { <span style="color:var(--text-mute);">—</span> }</td>
+                                    <td style="@Td()max-width:220px;color:var(--text-soft);">@(string.IsNullOrEmpty(r.Notes) ? "—" : r.Notes)</td>
+                                    <td style="@Td()color:var(--holiday);font-size:12px;">@r.PublicHoliday</td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot>
+                            <tr style="background:var(--n-900);color:#fff;">
+                                <td colspan="5" style="padding:12px 14px;font-weight:700;font-size:12px;letter-spacing:0.04em;text-transform:uppercase;">Period total</td>
+                                <td class="mono" style="padding:12px 14px;text-align:right;font-weight:700;font-size:15px;">@HoursFormat.Decimal(_totalMin, _job.DecimalPlaces)</td>
+                                <td class="mono" style="padding:12px 14px;text-align:right;font-weight:700;">@HoursFormat.Hmm(_totalMin)</td>
+                                <td colspan="3"></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private IReadOnlyList<Job> _jobs = [];
+    private Job? _job;
+    private Guid _jobId;
+    private AppUser _user = null!;
+    private AustralianState _state;
+    private ExportScope _scope = ExportScope.Week;
+    private DateOnly _ref;
+    private IReadOnlyList<TimesheetRow> _rows = [];
+    private int _totalMin;
+    private bool _done;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _ref = Data.Today;
+        _user = await Data.CurrentUserAsync();
+        _jobs = await Data.ActiveJobsAsync();
+        if (_jobs.Count > 0) { _jobId = _jobs[0].Id; await LoadAsync(); }
+    }
+
+    private async Task LoadAsync()
+    {
+        _done = false;
+        _job = await Data.JobAsync(_jobId);
+        if (_job is null) return;
+        _state = Data.EffectiveState(_job, _user);
+        var (from, to) = ExportPeriod.Range(_scope, _ref);
+        var entries = await Data.EntriesAsync(_job.Id, from, to);
+        _rows = ExportSvc.BuildRows(entries, new ExportContext(_state, _job.DecimalPlaces));
+        _totalMin = entries.Sum(e => Math.Max(0, Calc.DurationMinutes(e)));
+    }
+
+    private async Task OnJobChange(ChangeEventArgs e)
+    {
+        if (Guid.TryParse(e.Value?.ToString(), out var id)) { _jobId = id; await LoadAsync(); }
+    }
+
+    private async Task SetScope(ExportScope s) { _scope = s; await LoadAsync(); }
+
+    private async Task Step(int dir)
+    {
+        _ref = _scope switch
+        {
+            ExportScope.Week => _ref.AddDays(dir * 7),
+            ExportScope.Month => _ref.AddMonths(dir),
+            _ => _ref.AddYears(dir),
+        };
+        await LoadAsync();
+    }
+
+    private string RangeLabel()
+    {
+        var (from, to) = ExportPeriod.Range(_scope, _ref);
+        return _scope switch
+        {
+            ExportScope.Week => CalendarFormat.Range(from, to),
+            ExportScope.Month => $"{System.Globalization.CultureInfo.InvariantCulture.DateTimeFormat.GetMonthName(_ref.Month)} {_ref.Year}",
+            _ => $"{CalendarFormat.FyLabel(from)} (1 Jul {from.Year} – 30 Jun {to.Year})",
+        };
+    }
+
+    private async Task Download()
+    {
+        if (_job is null || _rows.Count == 0) return;
+        var bytes = await ExportSvc.ToWorkbookAsync(_rows);
+        var (from, _) = ExportPeriod.Range(_scope, _ref);
+        var slug = System.Text.RegularExpressions.Regex.Replace(_job.Name, "[^a-zA-Z0-9]+", "-").Trim('-');
+        var filename = $"{slug}_{_scope}_{from:yyyy-MM-dd}.xlsx";
+        await JS.InvokeVoidAsync("tsDownload", filename, Convert.ToBase64String(bytes),
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        _done = true;
+    }
+
+    private static string Td(string align = "left") =>
+        $"padding:9px 14px;border-bottom:1px solid var(--n-50);text-align:{align};white-space:nowrap;";
+}
