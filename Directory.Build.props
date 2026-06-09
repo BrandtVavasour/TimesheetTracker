@@ -1,0 +1,5 @@
+<Project>
+  <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Linux')) And !$(RuntimeIdentifier.StartsWith('linux-'))">
+    <RuntimeIdentifier>linux-x64</RuntimeIdentifier>
+  </PropertyGroup>
+</Project>
