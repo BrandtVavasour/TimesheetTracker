@@ -1,0 +1,16 @@
+<div style="margin-top:22px;display:flex;align-items:center;gap:14px;padding:22px 24px;border-radius:var(--r-lg);
+            background:var(--surface);border:1px dashed var(--line-strong);box-shadow:var(--sh-1);color:var(--text-soft);">
+    <span style="width:40px;height:40px;border-radius:10px;background:var(--accent-tint);color:var(--accent);display:grid;place-items:center;flex:none;">
+        <Icon Name="@Icon" Size="20" />
+    </span>
+    <div>
+        <div style="font-size:14.5px;font-weight:600;color:var(--text);">@Title</div>
+        <div style="font-size:13px;margin-top:2px;">@ChildText</div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Icon { get; set; } = "info";
+    [Parameter, EditorRequired] public string Title { get; set; } = "";
+    [Parameter, EditorRequired] public string ChildText { get; set; } = "";
+}
