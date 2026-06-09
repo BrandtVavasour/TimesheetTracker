@@ -24,14 +24,14 @@ Tracks the autonomous /loop build to completion. Update checkboxes each iteratio
 - [x] Data-layer tests for user-scoping / query filters (EF InMemory) + seed tests
 - [x] Keep DataModel.Tests green (now 18: logic/export/model/scoping/seed)
 
-## D. Screenshots (committed)
-- [ ] Capture all 5 screens at desktop (~1440w) and mobile (~390w)
-- [ ] Commit PNGs under `docs/screenshots/`
+## D. Screenshots (committed) ✅
+- [x] Capture all 5 screens at desktop (1440w@2x) and mobile (390w@2x) via headless Chrome
+- [x] Commit PNGs under `docs/screenshots/`
 
-## E. CI / GitHub
-- [ ] `.github/workflows/ci.yml` — build + `dotnet test` on push/PR
-- [ ] README with build/test/run instructions
-- [ ] Verify everything builds + tests pass; commit
+## E. CI / GitHub ✅
+- [x] `.github/workflows/ci.yml` — restore + build + `dotnet test` on push/PR (.NET 10)
+- [x] README with screenshots + build/test/run + security notes
+- [x] Verify everything builds + tests pass in Release; commit
 
 ## Notes
 - Dev/screenshot runs use EF InMemory (no Docker needed). Real Postgres integration is Docker-gated.
