@@ -1,6 +1,6 @@
 @inherits LayoutComponentBase
 @inject NavigationManager Nav
-@inject TimesheetStore Store
+@inject ITimesheetData Data
 @implements IDisposable
 
 <div style="min-height:100%;display:flex;flex-direction:column;">
@@ -25,7 +25,7 @@
                 }
             </nav>
             <div style="margin-left:auto;display:flex;align-items:center;gap:10px;flex:none;">
-                <a href="profile" class="focusable" title="@Store.User.DisplayName"
+                <a href="profile" class="focusable" title="@_displayName"
                    style="width:34px;height:34px;border-radius:99px;border:1px solid var(--line-strong);background:var(--accent);color:#fff;
                           font-weight:700;font-size:13px;display:grid;place-items:center;text-decoration:none;">
                     @Initials
@@ -51,10 +51,15 @@
         new("profile", "Profile", "user"),
     ];
 
+    private string _displayName = "";
     private string Initials => string.Concat(
-        Store.User.DisplayName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(s => s[0]));
+        _displayName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(s => s[0]));
 
-    protected override void OnInitialized() => Nav.LocationChanged += OnLocationChanged;
+    protected override async Task OnInitializedAsync()
+    {
+        Nav.LocationChanged += OnLocationChanged;
+        _displayName = (await Data.CurrentUserAsync()).DisplayName;
+    }
     private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e) => StateHasChanged();
     public void Dispose() => Nav.LocationChanged -= OnLocationChanged;
 

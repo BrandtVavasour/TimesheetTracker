@@ -13,6 +13,13 @@ public class TimesheetDbContext(DbContextOptions<TimesheetDbContext> options)
     public DbSet<ProjectCode> ProjectCodes { get; set; }
     public DbSet<TimeEntry> TimeEntries { get; set; }
 
+    /// <summary>
+    /// The signed-in user's id. Set per request/circuit so global query filters scope
+    /// every Job/TimeEntry/JobCustomField/ProjectCode read to the owner — defence in depth
+    /// against cross-user (IDOR) access on top of explicit query scoping.
+    /// </summary>
+    public Guid CurrentUserId { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -20,5 +27,11 @@ public class TimesheetDbContext(DbContextOptions<TimesheetDbContext> options)
 
         modelBuilder.Entity<AppUser>().ToTable("Users");
         modelBuilder.Entity<IdentityRole<Guid>>().ToTable("Roles");
+
+        // Per-user query filters (defence in depth).
+        modelBuilder.Entity<Job>().HasQueryFilter(j => j.UserId == CurrentUserId);
+        modelBuilder.Entity<TimeEntry>().HasQueryFilter(e => e.Job.UserId == CurrentUserId);
+        modelBuilder.Entity<JobCustomField>().HasQueryFilter(f => f.Job.UserId == CurrentUserId);
+        modelBuilder.Entity<ProjectCode>().HasQueryFilter(p => p.Job.UserId == CurrentUserId);
     }
 }
