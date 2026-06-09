@@ -1,0 +1,39 @@
+@inject IJSRuntime JS
+
+<button @onclick="Copy" @onclick:stopPropagation="true" title="@($"Copy {Value}")"
+        class="copyval mono focusable"
+        style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-weight:600;line-height:1.1;
+               font-size:@(Fs)px;padding:@(Py)px @(Px)px;border-radius:var(--r-xs);
+               border:1px solid @(_done ? "var(--accent)" : BorderColor);
+               background:@(_done ? "var(--accent-tint)" : BgColor);
+               color:@(_done ? "var(--accent-text)" : Col);transition:background .14s, border-color .14s, color .14s;">
+    <span>@Value</span>
+    <span style="display:inline-flex;color:@(_done ? "var(--accent)" : "var(--text-mute)");@(_done ? "animation:flashCopied .4s ease;" : "")">
+        <Icon Name="@(_done ? "check" : "copy")" Size="@(Fs - 1)" Stroke="2" />
+    </span>
+</button>
+
+@code {
+    [Parameter, EditorRequired] public string Value { get; set; } = "";
+    [Parameter] public string Size { get; set; } = "md";
+    [Parameter] public string Tone { get; set; } = "default";
+
+    private bool _done;
+
+    private double Fs => Size switch { "sm" => 13, "lg" => 20, _ => 15 };
+    private double Py => Size switch { "sm" => 2, "lg" => 5, _ => 3 };
+    private double Px => Size switch { "sm" => 6, "lg" => 11, _ => 8 };
+    private string BgColor => Tone == "accent" ? "var(--accent-tint)" : "transparent";
+    private string BorderColor => Tone == "accent" ? "var(--accent-tintb)" : "var(--line)";
+    private string Col => Tone == "accent" ? "var(--accent-text)" : "var(--text)";
+
+    private async Task Copy()
+    {
+        await JS.InvokeVoidAsync("tsCopy", Value);
+        _done = true;
+        StateHasChanged();
+        await Task.Delay(1100);
+        _done = false;
+        StateHasChanged();
+    }
+}

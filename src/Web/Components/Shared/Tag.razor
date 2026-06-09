@@ -1,0 +1,8 @@
+<span class="mono" style="font-size:11.5px;font-weight:600;padding:1.5px 6px;border-radius:var(--r-xs);white-space:nowrap;
+             background:@(Dim ? "var(--n-100)" : "var(--accent-tint)");color:@(Dim ? "var(--text-mute)" : "var(--accent-text)");
+             border:1px solid @(Dim ? "var(--line)" : "var(--accent-tintb)");">@ChildContent</span>
+
+@code {
+    [Parameter] public bool Dim { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

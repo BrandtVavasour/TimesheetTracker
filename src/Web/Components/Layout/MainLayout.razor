@@ -1,0 +1,68 @@
+@inherits LayoutComponentBase
+@inject NavigationManager Nav
+@inject TimesheetStore Store
+@implements IDisposable
+
+<div style="min-height:100%;display:flex;flex-direction:column;">
+    <header style="position:sticky;top:0;z-index:100;background:rgba(255,255,255,0.82);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);">
+        <div style="max-width:1220px;margin:0 auto;height:58px;padding:0 24px;display:flex;align-items:center;gap:18px;">
+            <div style="display:flex;align-items:center;gap:9px;flex:none;">
+                <span style="width:30px;height:30px;border-radius:8px;background:var(--accent);color:#fff;display:grid;place-items:center;">
+                    <Icon Name="clock" Size="18" Stroke="2" />
+                </span>
+                <span class="ts-hide-narrow" style="font-size:15.5px;font-weight:700;letter-spacing:-0.02em;">Timesheet</span>
+            </div>
+            <nav style="display:flex;gap:2px;margin-left:10px;overflow-x:auto;">
+                @foreach (var n in Items)
+                {
+                    var on = IsActive(n.Href);
+                    <a href="@n.Href" class="navitem focusable"
+                       style="display:flex;align-items:center;gap:7px;padding:8px 13px;border-radius:var(--r-sm);cursor:pointer;text-decoration:none;
+                              background:@(on ? "var(--accent-tint)" : "transparent");color:@(on ? "var(--accent-text)" : "var(--text-soft)");
+                              font-size:13.5px;font-weight:600;white-space:nowrap;">
+                        <Icon Name="@n.Icon" Size="16" /><span class="ts-hide-narrow">@n.Label</span>
+                    </a>
+                }
+            </nav>
+            <div style="margin-left:auto;display:flex;align-items:center;gap:10px;flex:none;">
+                <a href="profile" class="focusable" title="@Store.User.DisplayName"
+                   style="width:34px;height:34px;border-radius:99px;border:1px solid var(--line-strong);background:var(--accent);color:#fff;
+                          font-weight:700;font-size:13px;display:grid;place-items:center;text-decoration:none;">
+                    @Initials
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <main style="max-width:1220px;width:100%;margin:0 auto;padding:26px 24px 50px;">
+        @Body
+    </main>
+</div>
+
+@code {
+    private record NavItem(string Href, string Label, string Icon);
+
+    private static readonly NavItem[] Items =
+    [
+        new("", "Timesheet", "clock"),
+        new("calendar", "Calendar", "calendar"),
+        new("jobs", "Jobs", "briefcase"),
+        new("export", "Export", "download"),
+        new("profile", "Profile", "user"),
+    ];
+
+    private string Initials => string.Concat(
+        Store.User.DisplayName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(s => s[0]));
+
+    protected override void OnInitialized() => Nav.LocationChanged += OnLocationChanged;
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e) => StateHasChanged();
+    public void Dispose() => Nav.LocationChanged -= OnLocationChanged;
+
+    private bool IsActive(string href)
+    {
+        var path = Nav.ToBaseRelativePath(Nav.Uri).TrimEnd('/');
+        var slash = path.IndexOf('/');
+        if (slash >= 0) path = path[..slash];
+        return string.Equals(path, href, StringComparison.OrdinalIgnoreCase);
+    }
+}

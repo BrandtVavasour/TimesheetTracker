@@ -1,0 +1,30 @@
+<span style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:var(--r-pill);
+             background:@Bg;color:@Col;border:1px solid @Bd;letter-spacing:0.01em;white-space:nowrap;">
+    @if (!string.IsNullOrEmpty(IconName))
+    {
+        <Icon Name="@IconName" Size="12" Stroke="2" />
+    }
+    @ChildContent
+</span>
+
+@code {
+    [Parameter] public string Tone { get; set; } = "neutral";
+    [Parameter] public string? IconName { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private string Bg => Tone switch
+    {
+        "holiday" => "var(--holiday-tint)", "accent" => "var(--accent-tint)",
+        "danger" => "var(--danger-tint)", "outline" => "transparent", _ => "var(--n-100)"
+    };
+    private string Col => Tone switch
+    {
+        "holiday" => "var(--holiday)", "accent" => "var(--accent-text)",
+        "danger" => "var(--danger)", _ => "var(--text-soft)"
+    };
+    private string Bd => Tone switch
+    {
+        "holiday" => "var(--holiday-bd)", "accent" => "var(--accent-tintb)",
+        "outline" => "var(--line-strong)", _ => "transparent"
+    };
+}

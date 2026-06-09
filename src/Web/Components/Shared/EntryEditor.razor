@@ -1,0 +1,213 @@
+@inject ITimeCalculationService Calc
+
+@if (Open && _e is not null)
+{
+    <div @onclick="OnClose" style="position:fixed;inset:0;z-index:200;background:rgba(22,27,26,0.42);backdrop-filter:blur(2px);
+         display:flex;align-items:flex-start;justify-content:center;padding:7vh 20px 40px;animation:fadeIn .14s ease;">
+        <div @onclick:stopPropagation="true" style="width:560px;max-width:100%;max-height:86vh;display:flex;flex-direction:column;
+             background:var(--surface);border-radius:var(--r-lg);box-shadow:var(--sh-3);border:1px solid var(--line);
+             animation:popIn .18s cubic-bezier(.2,.8,.3,1);overflow:hidden;">
+
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;padding:18px 20px 14px;border-bottom:1px solid var(--line);">
+                <div>
+                    <div style="font-size:16.5px;font-weight:700;letter-spacing:-0.01em;">@(IsNew ? "Add entry" : "Edit entry")</div>
+                    <div style="font-size:13px;color:var(--text-soft);margin-top:2px;">@Job.Name · @CalendarFormat.DayLong(_e.WorkDate)</div>
+                </div>
+                <button class="ts-iconbtn focusable" @onclick="OnClose" title="Close"
+                        style="width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;border-radius:var(--r-sm);
+                               border:1px solid transparent;background:transparent;color:var(--text-soft);cursor:pointer;">
+                    <Icon Name="x" Size="17" />
+                </button>
+            </div>
+
+            <div style="padding:18px 20px;overflow-y:auto;display:flex;flex-direction:column;gap:16px;">
+                <div style="display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap;">
+                    <label style="display:flex;flex-direction:column;gap:6px;">
+                        <span style="font-size:12.5px;font-weight:600;color:var(--text-soft);">Start</span>
+                        <input type="time" class="mono focusable" value="@_e.StartTime.ToString("HH:mm")"
+                               @onchange="@(e => OnTime(true, e.Value?.ToString()))" style="@TimeInputStyle" />
+                    </label>
+                    <div style="padding-bottom:9px;color:var(--text-mute);"><Icon Name="arrowR" Size="16" /></div>
+                    <label style="display:flex;flex-direction:column;gap:6px;">
+                        <span style="font-size:12.5px;font-weight:600;color:var(--text-soft);">End</span>
+                        <input type="time" class="mono focusable" value="@_e.EndTime.ToString("HH:mm")"
+                               @onchange="@(e => OnTime(false, e.Value?.ToString()))" style="@TimeInputStyle" />
+                    </label>
+                    <label style="display:flex;align-items:center;gap:8px;padding-bottom:9px;margin-left:4px;cursor:pointer;">
+                        <input type="checkbox" checked="@_e.EndsNextDay" @onchange="@(e => _e.EndsNextDay = (bool)e.Value!)" />
+                        <span style="font-size:13px;font-weight:600;color:@(_e.EndsNextDay ? "var(--accent-text)" : "var(--text-soft)");">Ends next day</span>
+                    </label>
+                </div>
+
+                @if (SuggestsNextDay() && _e.EndsNextDay)
+                {
+                    <div style="font-size:12.5px;color:var(--holiday);display:flex;gap:6px;align-items:center;margin-top:-6px;">
+                        <Icon Name="info" Size="14" /> End is on or before start — crossing midnight assumed.
+                    </div>
+                }
+
+                <label style="display:flex;flex-direction:column;gap:6px;">
+                    <span style="font-size:12.5px;font-weight:600;color:var(--text-soft);">Unpaid break</span>
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <input type="number" min="0" step="5" value="@_e.BreakMinutes" class="mono focusable"
+                               @onchange="@(e => _e.BreakMinutes = Math.Max(0, int.TryParse(e.Value?.ToString(), out var v) ? v : 0))"
+                               style="@(InputStyle("width:92px;"))" />
+                        <span style="font-size:13px;color:var(--text-mute);">min</span>
+                        <div style="display:flex;gap:6px;margin-left:6px;">
+                            @foreach (var b in new[] { 0, 30, 45, 60 })
+                            {
+                                <button class="mono focusable" @onclick="@(() => _e.BreakMinutes = b)"
+                                        style="padding:5px 10px;font-size:12.5px;font-weight:600;border-radius:var(--r-xs);cursor:pointer;
+                                               border:1px solid var(--line-strong);
+                                               background:@(_e.BreakMinutes == b ? "var(--accent-tint)" : "var(--surface)");
+                                               color:@(_e.BreakMinutes == b ? "var(--accent-text)" : "var(--text-soft)");">@b</button>
+                            }
+                        </div>
+                    </div>
+                </label>
+
+                @if (Job.ProjectCodes.Count > 0)
+                {
+                    <label style="display:flex;flex-direction:column;gap:6px;">
+                        <span style="font-size:12.5px;font-weight:600;color:var(--text-soft);">Project code</span>
+                        <select class="focusable" value="@(_e.ProjectCodeId?.ToString() ?? "")"
+                                @onchange="OnProjectChange" style="@(InputStyle("width:300px;cursor:pointer;"))">
+                            <option value="">— Untagged —</option>
+                            @foreach (var c in Job.ProjectCodes.Where(c => c.IsActive || c.Id == _e.ProjectCodeId).OrderBy(c => c.DisplayOrder))
+                            {
+                                <option value="@c.Id">@OptionLabel(c)</option>
+                            }
+                        </select>
+                    </label>
+                }
+
+                <label style="display:flex;flex-direction:column;gap:6px;">
+                    <span style="font-size:12.5px;font-weight:600;color:var(--text-soft);">Notes</span>
+                    <textarea rows="2" placeholder="What did you work on?" class="focusable"
+                              @onchange="@(e => _e.Notes = e.Value?.ToString())"
+                              style="@(InputStyle("height:auto;padding:8px 10px;resize:vertical;line-height:1.45;"))">@_e.Notes</textarea>
+                </label>
+
+                <div style="display:flex;align-items:center;gap:18px;padding:12px 14px;border-radius:var(--r-md);
+                            background:@(Valid ? "var(--accent-tint)" : "var(--danger-tint)");border:1px solid @(Valid ? "var(--accent-tintb)" : "transparent");">
+                    <div>
+                        <div style="font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:@(Valid ? "var(--accent-text)" : "var(--danger)");">Decimal hours</div>
+                        <div class="mono" style="font-size:26px;font-weight:700;line-height:1.1;color:@(Valid ? "var(--accent-text)" : "var(--danger)");">
+                            @(Valid ? HoursFormat.Decimal(Dur, Job.DecimalPlaces) : "—")
+                        </div>
+                    </div>
+                    <div style="width:1px;height:34px;background:@(Valid ? "var(--accent-tintb)" : "#0001");"></div>
+                    <div>
+                        <div style="font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-soft);">Duration</div>
+                        <div class="mono" style="font-size:26px;font-weight:700;line-height:1.1;color:@(Valid ? "var(--text)" : "var(--danger)");">
+                            @(Valid ? HoursFormat.Hmm(Dur) : "invalid")
+                        </div>
+                    </div>
+                    <div style="margin-left:auto;font-size:12px;color:var(--text-soft);max-width:150px;text-align:right;">
+                        @(Valid ? $"at {Job.DecimalPlaces} dp precision" : "End must be after start (after break).")
+                    </div>
+                </div>
+            </div>
+
+            <div style="display:flex;gap:8px;justify-content:flex-end;padding:14px 20px;border-top:1px solid var(--line);background:var(--surface-2);">
+                @if (!IsNew)
+                {
+                    <button class="ts-btn focusable" @onclick="Delete" style="@DeleteStyle">
+                        <Icon Name="trash" Size="16" /> Delete
+                    </button>
+                }
+                <button class="ts-btn focusable" @onclick="OnClose" style="@CancelStyle">Cancel</button>
+                <button class="ts-btn focusable" data-variant="primary" disabled="@(!Valid)" @onclick="Save" style="@SaveStyle">
+                    <Icon Name="check" Size="16" /> Save entry
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public TimeEntry? Draft { get; set; }
+    [Parameter] public bool IsNew { get; set; }
+    [Parameter, EditorRequired] public Job Job { get; set; } = null!;
+    [Parameter] public EventCallback<TimeEntry> OnSaveEntry { get; set; }
+    [Parameter] public EventCallback<Guid> OnDeleteEntry { get; set; }
+    [Parameter] public EventCallback OnCloseEditor { get; set; }
+
+    private TimeEntry? _e;
+    private TimeEntry? _lastDraft;
+
+    private int Dur => _e is null ? 0 : Calc.DurationMinutes(_e);
+    private bool Valid => Dur > 0;
+
+    private const string TimeInputStyle =
+        "height:36px;width:108px;padding:0 10px;border-radius:var(--r-sm);border:1px solid var(--line-strong);background:var(--surface);color:var(--text);font-size:14px;outline:none;";
+
+    private static string InputStyle(string extra) =>
+        $"height:36px;width:100%;padding:0 10px;border-radius:var(--r-sm);border:1px solid var(--line-strong);background:var(--surface);color:var(--text);font-size:14px;outline:none;{extra}";
+
+    private static string BtnStyle(string bg, string col, string bd) =>
+        $"display:inline-flex;align-items:center;justify-content:center;gap:7px;height:36px;padding:0 14px;font-size:14px;font-weight:600;" +
+        $"border-radius:var(--r-sm);cursor:pointer;white-space:nowrap;border:1px solid {bd};background:{bg};color:{col};box-shadow:var(--sh-1);";
+
+    private string DeleteStyle => BtnStyle("var(--surface)", "var(--danger)", "var(--line-strong)") + "margin-right:auto;";
+    private string CancelStyle => BtnStyle("var(--surface)", "var(--text)", "var(--line-strong)");
+    private string SaveStyle => BtnStyle("var(--accent)", "#fff", "transparent") + (Valid ? "" : "opacity:.5;cursor:not-allowed;");
+
+    protected override void OnParametersSet()
+    {
+        // Re-clone whenever a new draft is handed in.
+        if (!ReferenceEquals(_lastDraft, Draft))
+        {
+            _lastDraft = Draft;
+            _e = Draft is null ? null : Clone(Draft);
+        }
+    }
+
+    private static TimeEntry Clone(TimeEntry s) => new()
+    {
+        Id = s.Id, JobId = s.JobId, WorkDate = s.WorkDate, StartTime = s.StartTime, EndTime = s.EndTime,
+        EndsNextDay = s.EndsNextDay, BreakMinutes = s.BreakMinutes, Notes = s.Notes, ProjectCodeId = s.ProjectCodeId
+    };
+
+    private async Task OnClose() => await OnCloseEditor.InvokeAsync();
+
+    private static string OptionLabel(ProjectCode c)
+    {
+        var label = c.Code;
+        if (!string.IsNullOrEmpty(c.Description)) label += " · " + c.Description;
+        if (!c.IsActive) label += " (inactive)";
+        return label;
+    }
+
+    private bool SuggestsNextDay() => _e is not null && _e.EndTime <= _e.StartTime;
+
+    private void OnTime(bool isStart, string? value)
+    {
+        if (_e is null || !TimeOnly.TryParse(value, out var t)) return;
+        if (isStart) _e.StartTime = t; else _e.EndTime = t;
+        // Auto-suggest crossing midnight (mirrors the prototype).
+        if (_e.EndTime <= _e.StartTime && _e.EndTime != _e.StartTime) _e.EndsNextDay = true;
+        else if (_e.EndTime > _e.StartTime) _e.EndsNextDay = false;
+    }
+
+    private void OnProjectChange(ChangeEventArgs e)
+    {
+        if (_e is null) return;
+        _e.ProjectCodeId = Guid.TryParse(e.Value?.ToString(), out var id) ? id : null;
+    }
+
+    private async Task Save()
+    {
+        if (_e is null || !Valid) return;
+        await OnSaveEntry.InvokeAsync(_e);
+        await OnCloseEditor.InvokeAsync();
+    }
+
+    private async Task Delete()
+    {
+        if (_e is null) return;
+        await OnDeleteEntry.InvokeAsync(_e.Id);
+        await OnCloseEditor.InvokeAsync();
+    }
+}

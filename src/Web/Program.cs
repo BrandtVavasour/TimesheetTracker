@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using TimesheetTracker.DataModel;
+using TimesheetTracker.Web.Components;
+using TimesheetTracker.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,11 +24,25 @@ if (!string.IsNullOrEmpty(googleClientId) && !string.IsNullOrEmpty(googleSecret)
     });
 }
 
+// Demo data store (per-circuit) seeded with the sample week.
+// Stands in for EF Core + Identity-scoped persistence (follow-up task).
+builder.Services.AddScoped<TimesheetStore>();
+
 builder.Services.AddRazorComponents().AddInteractiveServerComponents();
 
 var app = builder.Build();
 
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler("/Error", createScopeForErrors: true);
+    app.UseHsts();
+}
+
+app.UseStaticFiles();
 app.UseAuthentication();
 app.UseAuthorization();
-app.MapGet("/", () => "Timesheet Tracker");
+app.UseAntiforgery();
+
+app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
+
 app.Run();
