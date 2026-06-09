@@ -1,0 +1,53 @@
+@if (Href is not null)
+{
+    <a href="@Href" class="ts-btn focusable" data-variant="@Variant" style="@FullStyle">
+        @if (Icon is not null) { <Icon Name="@Icon" Size="@IconSize" /> }
+        @ChildContent
+    </a>
+}
+else
+{
+    <button class="ts-btn focusable" data-variant="@Variant" disabled="@Disabled" @onclick="OnClick" @onclick:stopPropagation="StopPropagation" style="@FullStyle">
+        @if (Icon is not null) { <Icon Name="@Icon" Size="@IconSize" /> }
+        @ChildContent
+    </button>
+}
+
+@code {
+    [Parameter] public string Variant { get; set; } = "outline";
+    [Parameter] public string Size { get; set; } = "md";
+    [Parameter] public string? Icon { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public bool StopPropagation { get; set; }
+    [Parameter] public string? Href { get; set; }
+    [Parameter] public string? Style { get; set; }
+    [Parameter] public EventCallback OnClick { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private double H => Size switch { "sm" => 30, "lg" => 42, _ => 36 };
+    private double Px => Size switch { "sm" => 10, "lg" => 18, _ => 14 };
+    private double Fs => Size switch { "sm" => 13, "lg" => 15, _ => 14 };
+    private double IconSize => Fs + 2;
+
+    private (string bg, string col, string bd, string shadow) V => Variant switch
+    {
+        "primary" => ("var(--accent)", "#fff", "transparent", "var(--sh-1)"),
+        "ghost" => ("transparent", "var(--text-soft)", "transparent", "none"),
+        "subtle" => ("var(--n-100)", "var(--text)", "transparent", "none"),
+        "danger" => ("var(--surface)", "var(--danger)", "var(--line-strong)", "none"),
+        "accentSoft" => ("var(--accent-tint)", "var(--accent-text)", "var(--accent-tintb)", "none"),
+        _ => ("var(--surface)", "var(--text)", "var(--line-strong)", "var(--sh-1)"),
+    };
+
+    private string FullStyle
+    {
+        get
+        {
+            var v = V;
+            var dim = Disabled ? "opacity:.5;cursor:not-allowed;" : "";
+            return $"display:inline-flex;align-items:center;justify-content:center;gap:7px;height:{H}px;padding:0 {Px}px;" +
+                   $"font-size:{Fs}px;font-weight:600;border-radius:var(--r-sm);cursor:pointer;white-space:nowrap;letter-spacing:-0.01em;" +
+                   $"text-decoration:none;border:1px solid {v.bd};background:{v.bg};color:{v.col};box-shadow:{v.shadow};{dim}{Style}";
+        }
+    }
+}

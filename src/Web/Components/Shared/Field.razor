@@ -1,0 +1,15 @@
+<label style="display:flex;flex-direction:column;gap:6px;@Style">
+    <span style="font-size:12.5px;font-weight:600;color:var(--text-soft);letter-spacing:0.01em;">@Label</span>
+    @ChildContent
+    @if (!string.IsNullOrEmpty(Hint))
+    {
+        <span style="font-size:11.5px;color:var(--text-mute);">@Hint</span>
+    }
+</label>
+
+@code {
+    [Parameter, EditorRequired] public string Label { get; set; } = "";
+    [Parameter] public string? Hint { get; set; }
+    [Parameter] public string? Style { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

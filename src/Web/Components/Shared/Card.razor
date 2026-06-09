@@ -1,0 +1,20 @@
+<div style="background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--sh-1);overflow:hidden;">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:14px 18px;border-bottom:1px solid var(--line);background:var(--surface-2);">
+        <div>
+            <div style="font-size:14.5px;font-weight:700;letter-spacing:-0.01em;">@Title</div>
+            @if (!string.IsNullOrEmpty(Desc))
+            {
+                <div style="font-size:12.5px;color:var(--text-soft);margin-top:2px;">@Desc</div>
+            }
+        </div>
+        @Right
+    </div>
+    <div style="padding:18px;">@ChildContent</div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = "";
+    [Parameter] public string? Desc { get; set; }
+    [Parameter] public RenderFragment? Right { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

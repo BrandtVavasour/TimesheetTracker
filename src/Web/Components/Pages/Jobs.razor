@@ -1,5 +1,254 @@
 @page "/jobs"
+@rendermode InteractiveServer
+@inject ITimesheetData Data
 
 <PageHead Title="Jobs" Subtitle="Settings, custom fields, and project codes — per job." />
-<ComingSoon Icon="briefcase" Title="Job editor — next up"
-            ChildText="State override, decimal places, work-day toggles, custom fields (show-on-timesheet), project codes, and archive." />
+
+@if (_job is null)
+{
+    <div style="margin-top:22px;color:var(--text-mute);">Loading…</div>
+}
+else
+{
+    <div style="display:grid;grid-template-columns:232px 1fr;gap:18px;align-items:start;padding:22px 0 40px;" class="ts-jobs-grid">
+        <!-- job list -->
+        <div style="display:flex;flex-direction:column;gap:6px;">
+            <div style="font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-mute);padding:2px 8px 4px;">Active jobs</div>
+            @foreach (var j in _all.Where(j => !j.IsArchived))
+            {
+                @JobPill(j, false)
+            }
+            @if (_all.Any(j => j.IsArchived))
+            {
+                <div style="font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-mute);padding:10px 8px 4px;">Archived</div>
+                @foreach (var j in _all.Where(j => j.IsArchived))
+                {
+                    @JobPill(j, true)
+                }
+            }
+            <Btn Variant="outline" Icon="plus" Size="sm" Style="margin-top:8px;justify-content:flex-start;" OnClick="AddJob">New job</Btn>
+            <Btn Variant="primary" Icon="@(_saved ? "check" : "copy")" Size="sm" Style="margin-top:4px;justify-content:flex-start;" OnClick="Save">@(_saved ? "Saved" : "Save changes")</Btn>
+        </div>
+
+        <!-- form -->
+        <div style="display:flex;flex-direction:column;gap:16px;min-width:0;">
+            <Card Title="General" Desc="Name, holiday state, output precision, and scheduled work days.">
+                <div style="display:flex;flex-direction:column;gap:18px;">
+                    <div style="display:grid;grid-template-columns:1fr 200px;gap:16px;">
+                        <Field Label="Job name">
+                            <input class="input" @bind="_job.Name" @bind:event="oninput" placeholder="e.g. Acme Corp" />
+                        </Field>
+                        <Field Label="Holiday state" Hint="@($"Effective: {(_job.StateOverride?.ToString() ?? _user.DefaultState.ToString())}")">
+                            <select class="input" value="@(_job.StateOverride?.ToString() ?? "")" @onchange="OnStateChange">
+                                <option value="">Use my default (@_user.DefaultState)</option>
+                                @foreach (var s in Enum.GetValues<AustralianState>())
+                                {
+                                    <option value="@s">@s</option>
+                                }
+                            </select>
+                        </Field>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;">
+                        <Field Label="Decimal places" Hint="Precision of the copyable decimal value.">
+                            <div style="display:flex;gap:5px;align-items:center;">
+                                @for (var n = 0; n <= 4; n++)
+                                {
+                                    var places = n;
+                                    var on = _job.DecimalPlaces == places;
+                                    <button class="mono focusable" @onclick="@(() => _job.DecimalPlaces = places)"
+                                            style="width:42px;height:36px;border-radius:var(--r-sm);cursor:pointer;font-weight:700;font-size:14px;
+                                                   border:1px solid @(on ? "var(--accent)" : "var(--line-strong)");background:@(on ? "var(--accent-tint)" : "var(--surface)");color:@(on ? "var(--accent-text)" : "var(--text-soft)");">@places</button>
+                                }
+                                <span class="mono" style="margin-left:8px;font-size:13px;color:var(--text-mute);">e.g. @(7.5.ToString("F" + _job.DecimalPlaces))</span>
+                            </div>
+                        </Field>
+                        <Field Label="Scheduled work days" Hint="Non-work days are de-emphasised but still accept entries.">
+                            <div style="display:flex;gap:5px;">
+                                @for (var i = 0; i < 7; i++)
+                                {
+                                    var flag = (DaysOfWeek)(1 << i);
+                                    var on = _job.WorkDays.HasFlag(flag);
+                                    <button class="focusable" @onclick="@(() => _job.WorkDays ^= flag)"
+                                            style="width:40px;height:36px;border-radius:var(--r-sm);cursor:pointer;font-size:12px;font-weight:700;
+                                                   border:1px solid @(on ? "var(--accent)" : "var(--line-strong)");background:@(on ? "var(--accent)" : "var(--surface)");color:@(on ? "#fff" : "var(--text-mute)");">@CalendarFormat.DowShort[i][0]</button>
+                                }
+                            </div>
+                        </Field>
+                    </div>
+                </div>
+            </Card>
+
+            <Card Title="Custom fields" Desc="Constant per-job values like employee number or cost centre.">
+                <Right>
+                    <Btn Variant="outline" Size="sm" Icon="plus" OnClick="AddField">Add field</Btn>
+                </Right>
+                <ChildContent>
+                @if (_job.CustomFields.Count == 0)
+                {
+                    <div style="padding:14px 4px;font-size:13px;color:var(--text-mute);font-style:italic;">No custom fields yet.</div>
+                }
+                else
+                {
+                    <div style="display:flex;flex-direction:column;gap:8px;">
+                        <div style="display:grid;grid-template-columns:1fr 1fr 150px 34px;gap:10px;font-size:11px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:var(--text-mute);padding:0 2px;">
+                            <span>Label</span><span>Value</span><span>On timesheet</span><span></span>
+                        </div>
+                        @foreach (var f in _job.CustomFields.OrderBy(f => f.DisplayOrder).ToList())
+                        {
+                            <div style="display:grid;grid-template-columns:1fr 1fr 150px 34px;gap:10px;align-items:center;">
+                                <input class="input" @bind="f.Name" @bind:event="oninput" placeholder="Employee #" />
+                                <input class="input mono" @bind="f.Value" @bind:event="oninput" placeholder="40192" />
+                                <button class="focusable" @onclick="@(() => f.ShowOnTimesheet = !f.ShowOnTimesheet)"
+                                        style="display:flex;align-items:center;gap:8px;height:36px;padding:0 11px;border-radius:var(--r-sm);cursor:pointer;
+                                               border:1px solid @(f.ShowOnTimesheet ? "var(--accent-tintb)" : "var(--line-strong)");background:@(f.ShowOnTimesheet ? "var(--accent-tint)" : "var(--surface)");">
+                                    <Icon Name="@(f.ShowOnTimesheet ? "eye" : "info")" Size="15" Style="@($"color:{(f.ShowOnTimesheet ? "var(--accent)" : "var(--text-mute)")};")" />
+                                    <span style="font-size:12.5px;font-weight:600;color:@(f.ShowOnTimesheet ? "var(--accent-text)" : "var(--text-mute)");">@(f.ShowOnTimesheet ? "Shown" : "Hidden")</span>
+                                </button>
+                                <button class="ts-iconbtn focusable" @onclick="@(() => _job.CustomFields.Remove(f))" title="Remove"
+                                        style="width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;border-radius:var(--r-sm);border:none;background:transparent;color:var(--text-soft);cursor:pointer;"><Icon Name="trash" Size="16" /></button>
+                            </div>
+                        }
+                    </div>
+                }
+                </ChildContent>
+            </Card>
+
+            <Card Title="Project codes" Desc="Pick one per entry. Inactive codes stay for history but leave the selector.">
+                <Right>
+                    <Btn Variant="outline" Size="sm" Icon="plus" OnClick="AddCode">Add code</Btn>
+                </Right>
+                <ChildContent>
+                @if (_job.ProjectCodes.Count == 0)
+                {
+                    <div style="padding:14px 4px;font-size:13px;color:var(--text-mute);font-style:italic;">No project codes. Entries for this job are untagged.</div>
+                }
+                else
+                {
+                    <div style="display:flex;flex-direction:column;gap:8px;">
+                        <div style="display:grid;grid-template-columns:160px 1fr 130px 34px;gap:10px;font-size:11px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:var(--text-mute);padding:0 2px;">
+                            <span>Code</span><span>Description</span><span>Status</span><span></span>
+                        </div>
+                        @foreach (var c in _job.ProjectCodes.OrderBy(c => c.DisplayOrder).ToList())
+                        {
+                            <div style="display:grid;grid-template-columns:160px 1fr 130px 34px;gap:10px;align-items:center;opacity:@(c.IsActive ? "1" : "0.66");">
+                                <input class="input mono" @bind="c.Code" @bind:event="oninput" placeholder="PRJ-1234" />
+                                <input class="input" @bind="c.Description" @bind:event="oninput" placeholder="Optional label" />
+                                <button class="focusable" @onclick="@(() => c.IsActive = !c.IsActive)"
+                                        style="display:flex;align-items:center;gap:7px;height:36px;padding:0 11px;border-radius:var(--r-sm);cursor:pointer;
+                                               border:1px solid @(c.IsActive ? "var(--accent-tintb)" : "var(--line-strong)");background:@(c.IsActive ? "var(--accent-tint)" : "var(--n-100)");">
+                                    <span style="width:7px;height:7px;border-radius:99px;background:@(c.IsActive ? "var(--accent)" : "var(--text-mute)");"></span>
+                                    <span style="font-size:12.5px;font-weight:600;color:@(c.IsActive ? "var(--accent-text)" : "var(--text-mute)");">@(c.IsActive ? "Active" : "Inactive")</span>
+                                </button>
+                                <button class="ts-iconbtn focusable" @onclick="@(() => _job.ProjectCodes.Remove(c))" title="Remove"
+                                        style="width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;border-radius:var(--r-sm);border:none;background:transparent;color:var(--text-soft);cursor:pointer;"><Icon Name="trash" Size="16" /></button>
+                            </div>
+                        }
+                    </div>
+                }
+                </ChildContent>
+            </Card>
+
+            <Card Title="@(_job.IsArchived ? "Archived job" : "Archive")" Desc="@(_job.IsArchived ? "Hidden from pickers; history is preserved." : "Hide this job from pickers without deleting its history.")">
+                <div style="display:flex;align-items:center;justify-content:space-between;">
+                    <div style="display:flex;align-items:center;gap:10px;color:@(_job.IsArchived ? "var(--holiday)" : "var(--text-soft)");font-size:13.5px;">
+                        <Icon Name="info" Size="18" /> @(_job.IsArchived ? "This job is archived." : "Active and available in job pickers.")
+                    </div>
+                    <Btn Variant="@(_job.IsArchived ? "primary" : "outline")" OnClick="ToggleArchive">@(_job.IsArchived ? "Restore job" : "Archive job")</Btn>
+                </div>
+            </Card>
+        </div>
+    </div>
+}
+
+@code {
+    private List<Job> _all = [];
+    private Job? _job;             // editable working copy
+    private AppUser _user = null!;
+    private bool _saved;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _user = await Data.CurrentUserAsync();
+        await ReloadListAsync();
+        if (_all.Count > 0) await SelectAsync(_all[0].Id);
+    }
+
+    private async Task ReloadListAsync() => _all = (await Data.AllJobsAsync()).ToList();
+
+    private async Task SelectAsync(Guid id)
+    {
+        var src = await Data.JobAsync(id);
+        if (src is null) return;
+        _job = Clone(src);
+        _saved = false;
+    }
+
+    private static Job Clone(Job s) => new()
+    {
+        Id = s.Id, UserId = s.UserId, Name = s.Name, StateOverride = s.StateOverride,
+        DecimalPlaces = s.DecimalPlaces, WorkDays = s.WorkDays, IsArchived = s.IsArchived, DisplayOrder = s.DisplayOrder,
+        CustomFields = s.CustomFields.Select(f => new JobCustomField
+        {
+            Id = f.Id, JobId = f.JobId, Name = f.Name, Value = f.Value, ShowOnTimesheet = f.ShowOnTimesheet, DisplayOrder = f.DisplayOrder
+        }).ToList(),
+        ProjectCodes = s.ProjectCodes.Select(c => new ProjectCode
+        {
+            Id = c.Id, JobId = c.JobId, Code = c.Code, Description = c.Description, IsActive = c.IsActive, DisplayOrder = c.DisplayOrder
+        }).ToList(),
+    };
+
+    private void OnStateChange(ChangeEventArgs e)
+    {
+        if (_job is null) return;
+        _job.StateOverride = Enum.TryParse<AustralianState>(e.Value?.ToString(), out var s) ? s : null;
+    }
+
+    private void AddField()
+    {
+        if (_job is null) return;
+        _job.CustomFields.Add(new JobCustomField { Id = Guid.NewGuid(), Name = "", Value = "", ShowOnTimesheet = false, DisplayOrder = _job.CustomFields.Count });
+    }
+
+    private void AddCode()
+    {
+        if (_job is null) return;
+        _job.ProjectCodes.Add(new ProjectCode { Id = Guid.NewGuid(), Code = "", Description = "", IsActive = true, DisplayOrder = _job.ProjectCodes.Count });
+    }
+
+    private async Task ToggleArchive()
+    {
+        if (_job is null) return;
+        _job.IsArchived = !_job.IsArchived;
+        await Save();
+    }
+
+    private async Task AddJob()
+    {
+        var job = await Data.AddJobAsync();
+        await ReloadListAsync();
+        await SelectAsync(job.Id);
+    }
+
+    private async Task Save()
+    {
+        if (_job is null) return;
+        await Data.SaveJobAsync(_job);
+        await ReloadListAsync();
+        _saved = true;
+    }
+
+    private RenderFragment JobPill(Job j, bool muted) => __builder =>
+    {
+        var on = _job is not null && j.Id == _job.Id;
+        <button class="navitem focusable" @onclick="@(() => SelectAsync(j.Id))"
+                style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--r-md);cursor:pointer;text-align:left;width:100%;
+                       border:1px solid @(on ? "var(--accent-tintb)" : "transparent");background:@(on ? "var(--accent-tint)" : "transparent");">
+            <span style="width:26px;height:26px;border-radius:7px;display:grid;place-items:center;font-weight:700;font-size:12px;flex:none;
+                         background:@(on ? "var(--accent)" : "var(--n-200)");color:@(on ? "#fff" : "var(--text-soft)");">@j.Name[0]</span>
+            <span style="min-width:0;">
+                <span style="display:block;font-size:13.5px;font-weight:600;color:@(on ? "var(--accent-text)" : "var(--text)");overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">@j.Name</span>
+                <span style="display:block;font-size:11px;color:var(--text-mute);">@(muted ? "Archived" : $"{j.ProjectCodes.Count} codes")</span>
+            </span>
+        </button>
+    };
+}

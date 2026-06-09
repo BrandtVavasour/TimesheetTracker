@@ -1,5 +1,109 @@
 @page "/profile"
+@rendermode InteractiveServer
+@inject ITimesheetData Data
 
 <PageHead Title="Profile" Subtitle="Your details, sign-in methods, and regional preferences." />
-<ComingSoon Icon="user" Title="Profile — next up"
-            ChildText="Display name, default state, and Google / local sign-in management (Identity + Google auth already wired in Program.cs)." />
+
+@if (_user is null)
+{
+    <div style="margin-top:22px;color:var(--text-mute);">Loading…</div>
+}
+else
+{
+    <div style="max-width:680px;display:flex;flex-direction:column;gap:16px;padding:22px 0 40px;">
+        <Card Title="Profile" Desc="Shown in the app header and on every export.">
+            <div style="display:flex;gap:18px;align-items:center;margin-bottom:18px;">
+                <span style="width:60px;height:60px;border-radius:16px;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:24px;font-weight:700;">@Initials</span>
+                <div>
+                    <div style="font-size:18px;font-weight:700;">@_user.DisplayName</div>
+                    <div style="font-size:13px;color:var(--text-soft);">@_user.Email</div>
+                </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 220px;gap:16px;align-items:end;">
+                <Field Label="Display name">
+                    <input class="input" @bind="_displayName" @bind:event="oninput" />
+                </Field>
+                <Field Label="Default holiday state" Hint="Used by jobs without an override.">
+                    <select class="input" value="@_defaultState" @onchange="@(e => _defaultState = Enum.Parse<AustralianState>(e.Value!.ToString()!))">
+                        @foreach (var s in Enum.GetValues<AustralianState>())
+                        {
+                            <option value="@s">@s</option>
+                        }
+                    </select>
+                </Field>
+            </div>
+            <div style="display:flex;justify-content:flex-end;margin-top:16px;">
+                <Btn Variant="primary" Icon="@(_saved ? "check" : "copy")" OnClick="Save">@(_saved ? "Saved" : "Save profile")</Btn>
+            </div>
+        </Card>
+
+        <Card Title="Sign-in methods" Desc="Local account plus optional Google sign-in.">
+            <div style="display:flex;flex-direction:column;gap:10px;">
+                <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:var(--r-md);border:1px solid var(--line);">
+                    <svg width="22" height="22" viewBox="0 0 48 48" style="flex:none;display:block;">
+                        <path fill="#4285F4" d="M45.1 24.5c0-1.6-.1-2.7-.4-3.9H24v7.1h12.1c-.2 1.8-1.6 4.6-4.5 6.5l-.04.3 6.6 5.1.5.05c4.2-3.9 6.6-9.6 6.6-15.2Z"/>
+                        <path fill="#34A853" d="M24 46c5.9 0 10.9-2 14.5-5.3l-6.9-5.4c-1.9 1.3-4.3 2.2-7.6 2.2-5.8 0-10.7-3.8-12.4-9.1l-.3.02-6.9 5.3-.1.3C7.8 41 15.3 46 24 46Z"/>
+                        <path fill="#FBBC05" d="M11.6 28.4c-.5-1.3-.7-2.7-.7-4.4s.3-3.1.7-4.4l-.01-.3-7-5.4-.2.1C2.9 17.1 2 20.4 2 24s.9 6.9 2.5 10l7.1-5.6Z"/>
+                        <path fill="#EB4335" d="M24 9.5c4.1 0 6.9 1.8 8.5 3.3l6.2-6C34.9 3.3 29.9 1 24 1 15.3 1 7.8 6 4.5 14l7.1 5.6C13.3 13.3 18.2 9.5 24 9.5Z"/>
+                    </svg>
+                    <div style="flex:1;">
+                        <div style="font-size:13.5px;font-weight:600;">Google</div>
+                        <div style="font-size:12px;color:var(--text-soft);">@_user.Email</div>
+                    </div>
+                    <Btn Size="sm" Variant="outline">Connect</Btn>
+                </div>
+                <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:var(--r-md);border:1px solid var(--line);">
+                    <span style="width:22px;height:22px;display:grid;place-items:center;color:var(--text-soft);"><Icon Name="user" Size="20" /></span>
+                    <div style="flex:1;">
+                        <div style="font-size:13.5px;font-weight:600;">Email &amp; password</div>
+                        <div style="font-size:12px;color:var(--text-soft);">Local ASP.NET Core Identity account</div>
+                    </div>
+                    <Btn Size="sm" Variant="outline">Change password</Btn>
+                </div>
+            </div>
+        </Card>
+
+        <Card Title="Preferences" Desc="Regional conventions for an Australian timesheet.">
+            <div style="display:flex;flex-direction:column;gap:12px;">
+                @PrefRow("Week starts", "Monday", "Fixed this iteration")
+                @PrefRow("Financial year", "1 Jul – 30 Jun", "Used for yearly export")
+                @PrefRow("Time entry", "Wall-clock, no timezone conversion", null)
+            </div>
+        </Card>
+    </div>
+}
+
+@code {
+    private AppUser? _user;
+    private string _displayName = "";
+    private AustralianState _defaultState;
+    private bool _saved;
+
+    private string Initials => _user is null ? "" : string.Concat(
+        _user.DisplayName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(s => s[0]));
+
+    protected override async Task OnInitializedAsync()
+    {
+        _user = await Data.CurrentUserAsync();
+        _displayName = _user.DisplayName;
+        _defaultState = _user.DefaultState;
+    }
+
+    private async Task Save()
+    {
+        await Data.UpdateUserAsync(_displayName, _defaultState);
+        _user = await Data.CurrentUserAsync();
+        _saved = true;
+    }
+
+    private RenderFragment PrefRow(string label, string value, string? note) => __builder =>
+    {
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-radius:var(--r-md);background:var(--surface-2);border:1px solid var(--line);">
+            <span style="font-size:13px;font-weight:600;color:var(--text-soft);">@label</span>
+            <span style="display:flex;align-items:center;gap:10px;">
+                <span style="font-size:13.5px;font-weight:600;">@value</span>
+                @if (note is not null) { <Badge Tone="neutral">@note</Badge> }
+            </span>
+        </div>
+    };
+}
