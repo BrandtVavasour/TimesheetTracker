@@ -1,0 +1,13 @@
+﻿[
+  {
+    Date: 2026-12-25,
+    Day: Friday,
+    Start: 09:00,
+    End: 17:00,
+    BreakMinutes: 30,
+    DecimalHours: 7.5,
+    HoursMinutes: 7:30,
+    PublicHoliday: Christmas Day,
+    Notes: Worked the holiday
+  }
+]
