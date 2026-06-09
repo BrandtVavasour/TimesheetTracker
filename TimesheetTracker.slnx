@@ -5,5 +5,6 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/DataModel.Tests/DataModel.Tests.csproj" />
+    <Project Path="tests/Web.Tests/Web.Tests.csproj" />
   </Folder>
 </Solution>

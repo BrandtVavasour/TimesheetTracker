@@ -19,10 +19,10 @@ Tracks the autonomous /loop build to completion. Update checkboxes each iteratio
 - [x] Profile — display name, default state, sign-in methods
 - [x] Responsive/mobile: weekly collapses to stacked cards; export/jobs grids stack; icon-only nav
 
-## C. Tests
-- [ ] bUnit + Verify.Bunit project (`Web.Tests`) — snapshot weekly grid + key components
-- [ ] Data-layer tests for user-scoping / query filters (Testcontainers, Docker-gated)
-- [ ] Keep DataModel.Tests green (14 logic/export/model tests)
+## C. Tests ✅
+- [x] bUnit + Verify.Bunit project (`Web.Tests`) — component snapshots (Badge/Tag/CopyValue/CopyField) + render-assert tests for all 5 screens
+- [x] Data-layer tests for user-scoping / query filters (EF InMemory) + seed tests
+- [x] Keep DataModel.Tests green (now 18: logic/export/model/scoping/seed)
 
 ## D. Screenshots (committed)
 - [ ] Capture all 5 screens at desktop (~1440w) and mobile (~390w)

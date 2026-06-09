@@ -26,6 +26,8 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageVersion>
+    <PackageVersion Include="bunit" Version="2.7.2" />
+    <PackageVersion Include="Verify.Bunit" Version="13.0.3" />
     <PackageVersion Include="Verify.NUnit" Version="31.19.0" />
     <PackageVersion Include="Verify.EntityFramework" Version="15.2.0" />
     <PackageVersion Include="Testcontainers.PostgreSql" Version="4.12.0" />
