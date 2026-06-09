@@ -13,11 +13,11 @@ Tracks the autonomous /loop build to completion. Update checkboxes each iteratio
 
 ## B. Screens (all interactive, on `ITimesheetData`)
 - [x] Weekly timesheet (table view) — migrated to `ITimesheetData` (async, user-scoped)
-- [ ] Calendar — month grid, holiday dots, hour bars, click week → weekly
+- [x] Calendar — month grid, holiday dots, hour bars, click week → weekly (opens via ?week=)
 - [x] Jobs editor — settings, custom fields (show-on-timesheet), project codes, archive, state override, decimal places, work days
 - [x] Export — pick job + scope (week/month/FY), preview, download `.xlsx` via `IExportService`
 - [x] Profile — display name, default state, sign-in methods
-- [ ] Responsive/mobile: weekly collapses to stacked cards on narrow screens
+- [x] Responsive/mobile: weekly collapses to stacked cards; export/jobs grids stack; icon-only nav
 
 ## C. Tests
 - [ ] bUnit + Verify.Bunit project (`Web.Tests`) — snapshot weekly grid + key components

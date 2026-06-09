@@ -3,6 +3,7 @@
 @inject ITimesheetData Data
 @inject ITimeCalculationService Calc
 @inject IHolidayService Holidays
+@inject NavigationManager Nav
 
 @if (_job is null)
 {
@@ -90,8 +91,8 @@ else
             </div>
         </div>
 
-        <!-- table -->
-        <div style="background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden;box-shadow:var(--sh-1);">
+        <!-- table (desktop) -->
+        <div class="ts-hide-narrow" style="background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden;box-shadow:var(--sh-1);">
             <div class="ts-hide-narrow" style="display:grid;grid-template-columns:@Tpl;padding:9px 16px;background:var(--surface-2);border-bottom:1px solid var(--line);">
                 @{ var heads = new[] { "Shift", "Break", "Project", "Notes", "Decimal", "h:mm", "" }; }
                 @for (var i = 0; i < heads.Length; i++)
@@ -185,6 +186,66 @@ else
             }
         </div>
 
+        <!-- cards (mobile) -->
+        <div class="ts-only-narrow" style="flex-direction:column;gap:12px;">
+            @foreach (var d in days)
+            {
+                var list = EntriesForDay(d);
+                var min = list.Sum(e => Math.Max(0, Calc.DurationMinutes(e)));
+                var isWork = job.WorkDays.HasFlag(FlagFor(d));
+                var isToday = d == _today;
+                var isHoliday = Holidays.IsPublicHoliday(d, state, out var holidayName);
+                var di = CalendarFormat.DowIndex(d);
+                <div style="background:var(--surface);border:1px solid @(isToday ? "var(--accent)" : "var(--line)");border-radius:var(--r-lg);overflow:hidden;box-shadow:var(--sh-1);">
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--line);
+                                background:@(isHoliday ? "var(--holiday-tint)" : isToday ? "var(--accent-tint)" : "var(--surface-2)");">
+                        <div>
+                            <div style="display:flex;align-items:center;gap:7px;">
+                                <span style="font-size:15px;font-weight:700;">@CalendarFormat.DowShort[di] @d.Day</span>
+                                @if (isToday) { <Badge Tone="accent">Today</Badge> }
+                                @if (!isWork) { <Badge Tone="outline">Rest day</Badge> }
+                            </div>
+                            @if (isHoliday)
+                            {
+                                <div style="display:flex;align-items:center;gap:5px;margin-top:2px;">
+                                    <Icon Name="flag" Size="12" Stroke="2" Style="color:var(--holiday);" />
+                                    <span style="font-size:12px;font-weight:600;color:var(--holiday);">@holidayName</span>
+                                </div>
+                            }
+                        </div>
+                        @if (list.Count > 0) { <CopyValue Value="@HoursFormat.Decimal(min, job.DecimalPlaces)" Size="md" Tone="accent" /> }
+                    </div>
+                    <div style="padding:8px;display:flex;flex-direction:column;gap:6px;">
+                        @foreach (var e in list)
+                        {
+                            var dur = Calc.DurationMinutes(e);
+                            var valid = dur > 0;
+                            var pc = e.ProjectCode;
+                            <div class="te-card" @onclick="@(() => EditEntry(e))" style="padding:9px 11px;border-radius:var(--r-md);border:1px solid var(--line);cursor:pointer;background:@(valid ? "var(--surface)" : "var(--danger-tint)");">
+                                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                                    <span class="mono" style="font-size:14px;font-weight:600;display:flex;align-items:center;gap:6px;">
+                                        @e.StartTime.ToString("HH:mm")<span style="color:var(--text-mute);">–</span>@e.EndTime.ToString("HH:mm")
+                                        @if (e.EndsNextDay) { <span style="font-size:9.5px;font-weight:700;color:var(--holiday);background:var(--holiday-tint);border:1px solid var(--holiday-bd);border-radius:4px;padding:0 4px;">+1d</span> }
+                                    </span>
+                                    @if (valid) { <CopyValue Value="@HoursFormat.Decimal(dur, job.DecimalPlaces)" Size="sm" /> }
+                                </div>
+                                <div style="display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap;">
+                                    @if (pc is not null) { <Tag>@pc.Code</Tag> }
+                                    @if (e.BreakMinutes > 0) { <span class="mono" style="font-size:11.5px;color:var(--text-mute);">break @(e.BreakMinutes)m</span> }
+                                    <span class="mono" style="font-size:11.5px;color:var(--text-mute);margin-left:auto;">@(valid ? HoursFormat.Hmm(dur) : "invalid")</span>
+                                </div>
+                                @if (!string.IsNullOrEmpty(e.Notes)) { <div style="font-size:12.5px;color:var(--text-soft);margin-top:6px;line-height:1.4;">@e.Notes</div> }
+                            </div>
+                        }
+                        <button class="focusable" @onclick="@(() => AddEntry(d))"
+                                style="display:flex;align-items:center;justify-content:center;gap:7px;padding:9px;border-radius:var(--r-md);border:1px dashed var(--line-strong);background:transparent;cursor:pointer;color:var(--text-soft);font-size:13px;font-weight:600;">
+                            <Icon Name="plus" Size="15" /> Add entry
+                        </button>
+                    </div>
+                </div>
+            }
+        </div>
+
         <!-- week total -->
         @{ var weekMin = days.Sum(d => EntriesForDay(d).Sum(e => Math.Max(0, Calc.DurationMinutes(e)))); }
         <div style="display:flex;align-items:center;gap:16px;padding:16px 20px;border-radius:var(--r-lg);background:var(--n-900);color:#fff;box-shadow:var(--sh-2);flex-wrap:wrap;">
@@ -230,10 +291,18 @@ else
     protected override async Task OnInitializedAsync()
     {
         _today = Data.Today;
-        _week = CalendarFormat.StartOfWeek(_today);
+        _week = CalendarFormat.StartOfWeek(WeekFromQuery() ?? _today);
         _user = await Data.CurrentUserAsync();
         _jobs = await Data.ActiveJobsAsync();
         if (_jobs.Count > 0) await SelectJob(_jobs[0].Id);
+    }
+
+    private DateOnly? WeekFromQuery()
+    {
+        var uri = new Uri(Nav.Uri);
+        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+        if (query.TryGetValue("week", out var v) && DateOnly.TryParse(v.ToString(), out var d)) return d;
+        return null;
     }
 
     private List<TimeEntry> EntriesForDay(DateOnly d) =>
