@@ -1,5 +1,6 @@
 using Amazon;
 using Amazon.SimpleEmail;
+using Delta;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -156,12 +157,33 @@ try
         app.UseHsts();
     }
 
+    app.UseSecurityHeaders();
     app.UseStaticFiles();
     app.UseAuthentication();
     app.UseAuthorization();
+
+    // ETag/304 response caching keyed on the database's last transaction
+    // (Delta by Simon Cropp). Postgres only — the InMemory provider has no
+    // transaction tracking. Suffixed per-user so one user's cached response
+    // never validates for another; skipped for the Blazor circuit, auth
+    // pages, and the health probe.
+    if (!useInMemory)
+    {
+        app.UseDelta<TimesheetDbContext>(
+            suffix: ctx => ctx.User.Identity?.Name,
+            shouldExecute: ctx =>
+            {
+                var path = ctx.Request.Path.Value ?? "";
+                return !path.StartsWith("/_blazor", StringComparison.OrdinalIgnoreCase)
+                    && !path.StartsWith("/Account", StringComparison.OrdinalIgnoreCase)
+                    && !path.StartsWith("/health", StringComparison.OrdinalIgnoreCase);
+            });
+    }
+
     app.UseAntiforgery();
 
     app.MapGet("/health/live", () => Results.Ok("healthy"));
+    app.MapGet("/favicon.ico", () => Results.Redirect("/favicon.svg", permanent: true));
 
     app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
     app.MapAdditionalIdentityEndpoints();

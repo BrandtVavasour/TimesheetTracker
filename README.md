@@ -117,6 +117,13 @@ volume (so logins survive restarts), and honours `X-Forwarded-Proto/For` from th
   Google external login; app pages require sign-in (`[Authorize]`), and `ICurrentUser` resolves
   the signed-in user so the query filters scope data to them.
 - **Identity** enforces a 12-char password policy, lockout, and unique email.
+- **Security headers** on every response: a Content-Security-Policy with a **per-request
+  script nonce** (scripts are `'self'` + nonce only; styles allow inline attributes per the
+  design system), `X-Content-Type-Options`, `X-Frame-Options`/`frame-ancestors`,
+  `Referrer-Policy`, `Permissions-Policy`, and `Cross-Origin-Opener-Policy`.
+- **Response caching** via [Delta](https://github.com/SimonCropp/Delta) — ETag/304s keyed on
+  the database's last transaction id, suffixed per-user (Postgres only; skipped for the Blazor
+  circuit, auth pages, and health probe).
 - HTTPS redirection + HSTS in production; antiforgery enabled; secrets via environment /
   user-secrets (never committed).
 
