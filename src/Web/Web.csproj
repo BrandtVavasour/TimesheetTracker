@@ -8,6 +8,7 @@
   <ItemGroup>
     <PackageReference Include="AWSSDK.SimpleEmail" />
     <PackageReference Include="AWSSDK.Extensions.NETCore.Setup" />
+    <PackageReference Include="Delta.EF" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.Google" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
     <PackageReference Include="Serilog.AspNetCore" />
