@@ -83,10 +83,11 @@ docker build -f docker/Dockerfile.web -t gitea.jabtech.com.au/<user>/timesheettr
 docker push gitea.jabtech.com.au/<user>/timesheettracker-web:latest
 ```
 
-The stack and its environment template live in [`deployment/timesheet/`](deployment/timesheet/).
-In Portainer, create a stack from `docker-compose.yml` and supply a `.env`
-(see `.env.example`) — the only values you fill are the **Postgres credentials** and the
-**Google client secret**; the Google **client id** and DB host/name are already set.
+The Portainer stack + Ansible automation lives in the **TrueNas** project
+(`stacks/timesheet/docker-compose.yml`, `env/timesheet.env`, registered in
+`stacks_deploy.yml`). The only values to fill in `env/timesheet.env` are the **Postgres
+credentials** and the **Google client secret** — the Google **client id**, DB host/name, and
+networks are already set. See `stacks/timesheet/DEPLOY.md` there for the deploy checklist.
 
 Configuration is env-var driven (the deploy fills these):
 
