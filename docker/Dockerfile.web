@@ -1,0 +1,42 @@
+# Build stage
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /src
+ENV DOTNET_CLI_DO_NOT_USE_MSBUILD_SERVER=1
+
+# Copy build/restore inputs first for layer caching
+COPY Directory.Packages.props Directory.Build.props ./
+COPY src/DataModel/DataModel.csproj src/DataModel/
+COPY src/Web/Web.csproj src/Web/
+RUN dotnet restore src/Web/Web.csproj --disable-build-servers
+
+# Copy the rest and publish
+COPY . .
+RUN dotnet publish src/Web/Web.csproj -c Release -o /app/publish /p:UseAppHost=false --disable-build-servers
+
+# Runtime stage
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
+WORKDIR /app
+
+# curl for the container health check
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+
+# Non-root user (UID/GID overridable to match host volume ownership)
+ARG UID=65532
+ARG GID=65532
+RUN groupadd --gid ${GID} appuser && \
+    useradd --no-log-init --create-home --uid ${UID} --gid ${GID} appuser
+
+COPY --from=build /app/publish .
+
+# Data Protection keys live here (mount a volume so cookies survive restarts)
+RUN mkdir -p /app/keys && chown -R appuser:appuser /app
+USER appuser
+
+EXPOSE 8080
+ENV ASPNETCORE_URLS=http://+:8080
+ENV DATA_PROTECTION_KEYS_PATH=/app/keys
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=20s --retries=3 \
+  CMD curl -f http://localhost:8080/health/live || exit 1
+
+CMD ["dotnet", "Web.dll"]
