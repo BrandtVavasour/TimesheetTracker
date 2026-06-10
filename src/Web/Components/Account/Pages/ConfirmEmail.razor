@@ -1,0 +1,49 @@
+﻿@page "/Account/ConfirmEmail"
+
+@using System.Text
+@using Microsoft.AspNetCore.WebUtilities
+
+@inject UserManager<AppUser> UserManager
+@inject IdentityRedirectManager RedirectManager
+
+<PageTitle>Confirm email · Timesheet Tracker</PageTitle>
+
+<AuthShell Title="@_title" Subtitle="@_subtitle">
+    <a href="Account/Login" style="color:var(--accent);font-weight:600;text-decoration:none;">Sign in →</a>
+</AuthShell>
+
+@code {
+    private string _title = "Confirming your email…";
+    private string _subtitle = "";
+
+    [SupplyParameterFromQuery] private string? UserId { get; set; }
+    [SupplyParameterFromQuery] private string? Code { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (UserId is null || Code is null)
+        {
+            RedirectManager.RedirectTo("");
+            return;
+        }
+        var user = await UserManager.FindByIdAsync(UserId);
+        if (user is null)
+        {
+            _title = "Account not found";
+            _subtitle = "We couldn't find an account for that link.";
+            return;
+        }
+        var code = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(Code));
+        var result = await UserManager.ConfirmEmailAsync(user, code);
+        if (result.Succeeded)
+        {
+            _title = "Email confirmed";
+            _subtitle = "Thanks — your account is active. You can now sign in.";
+        }
+        else
+        {
+            _title = "Confirmation failed";
+            _subtitle = "That link is invalid or has expired.";
+        }
+    }
+}

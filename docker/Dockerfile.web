@@ -17,8 +17,9 @@ RUN dotnet publish src/Web/Web.csproj -c Release -o /app/publish /p:UseAppHost=f
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app
 
-# curl for the container health check
-RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+# curl for the health check; tzdata so Australia/Sydney resolves for "today"
+RUN apt-get update && apt-get install -y --no-install-recommends curl tzdata && rm -rf /var/lib/apt/lists/*
+ENV TZ=Australia/Sydney
 
 # Non-root user (UID/GID overridable to match host volume ownership)
 ARG UID=65532

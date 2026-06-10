@@ -1,4 +1,4 @@
-@inject IJSRuntime JS
+@inject IJSRuntime Js
 
 <button @onclick="Copy" @onclick:stopPropagation="true" title="@($"Copy {Value}")"
         class="copyval mono focusable"
@@ -29,7 +29,7 @@
 
     private async Task Copy()
     {
-        await JS.InvokeVoidAsync("tsCopy", Value);
+        await Js.InvokeVoidAsync("tsCopy", Value);
         _done = true;
         StateHasChanged();
         await Task.Delay(1100);

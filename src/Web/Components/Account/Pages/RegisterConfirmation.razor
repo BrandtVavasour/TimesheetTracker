@@ -1,0 +1,11 @@
+@page "/Account/RegisterConfirmation"
+
+<PageTitle>Confirm your email · Timesheet Tracker</PageTitle>
+
+<AuthShell Title="Confirm your email" Subtitle="We've sent a confirmation link to your inbox. Click it to activate your account, then sign in.">
+    <a href="Account/Login" style="color:var(--accent);font-weight:600;text-decoration:none;">← Back to sign in</a>
+</AuthShell>
+
+@code {
+    [SupplyParameterFromQuery] private string? Email { get; set; }
+}

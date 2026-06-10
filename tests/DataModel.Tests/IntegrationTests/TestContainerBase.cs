@@ -13,19 +13,19 @@ namespace DataModel.Tests.IntegrationTests;
 [Category("Docker")]
 public abstract class TestContainerBase
 {
-    private PostgreSqlContainer _container = null!;
+    private PostgreSqlContainer container = null!;
     protected TimesheetDbContext Db = null!;
 
     [SetUp]
     public async Task SetUp()
     {
-        _container = new PostgreSqlBuilder("postgres:17").Build();
-        await _container.StartAsync();
+        container = new PostgreSqlBuilder("postgres:17").Build();
+        await container.StartAsync();
 
         var options = new DbContextOptionsBuilder<TimesheetDbContext>()
-            .UseNpgsql(_container.GetConnectionString())
+            .UseNpgsql(container.GetConnectionString())
             .Options;
-        Db = new TimesheetDbContext(options);
+        Db = new(options);
         await Db.Database.MigrateAsync();
     }
 
@@ -33,6 +33,6 @@ public abstract class TestContainerBase
     public async Task TearDown()
     {
         await Db.DisposeAsync();
-        await _container.DisposeAsync();
+        await container.DisposeAsync();
     }
 }

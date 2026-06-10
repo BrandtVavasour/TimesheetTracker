@@ -10,6 +10,6 @@ public class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<TimesheetD
         var options = new DbContextOptionsBuilder<TimesheetDbContext>()
             .UseNpgsql("Host=localhost;Database=timesheet;Username=postgres;Password=postgres")
             .Options;
-        return new TimesheetDbContext(options);
+        return new(options);
     }
 }

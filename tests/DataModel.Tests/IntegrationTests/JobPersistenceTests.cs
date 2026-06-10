@@ -19,12 +19,12 @@ public class JobPersistenceTests : TestContainerBase
             DefaultState = AustralianState.VIC
         };
         var job = new Job { Id = Guid.NewGuid(), Name = "Acme", User = user, DecimalPlaces = 2 };
-        job.TimeEntries.Add(new TimeEntry
+        job.TimeEntries.Add(new()
         {
             Id = Guid.NewGuid(),
-            WorkDate = new DateOnly(2026, 6, 8),
-            StartTime = new TimeOnly(9, 0),
-            EndTime = new TimeOnly(17, 0),
+            WorkDate = new(2026, 6, 8),
+            StartTime = new(9, 0),
+            EndTime = new(17, 0),
             BreakMinutes = 30
         });
         Db.Add(job);

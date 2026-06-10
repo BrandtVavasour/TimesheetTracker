@@ -1,12 +1,14 @@
 @page "/Account/Register"
 
 @using System.ComponentModel.DataAnnotations
-@using Microsoft.AspNetCore.Identity
-@using TimesheetTracker.DataModel
+@using System.Text
+@using System.Text.Encodings.Web
+@using Microsoft.AspNetCore.WebUtilities
 
 @inject UserManager<AppUser> UserManager
 @inject IUserStore<AppUser> UserStore
 @inject SignInManager<AppUser> SignInManager
+@inject IEmailSender<AppUser> EmailSender
 @inject ILogger<Register> Logger
 @inject NavigationManager NavigationManager
 @inject IdentityRedirectManager RedirectManager
@@ -60,7 +62,7 @@
 </AuthShell>
 
 @code {
-    private IEnumerable<IdentityError>? identityErrors;
+    private IEnumerable<IdentityError>? _identityErrors;
 
     [SupplyParameterFromForm]
     private InputModel Input { get; set; } = default!;
@@ -68,7 +70,7 @@
     [SupplyParameterFromQuery]
     private string? ReturnUrl { get; set; }
 
-    private string? Message => identityErrors is null ? null : string.Join(" ", identityErrors.Select(e => e.Description));
+    private string? Message => _identityErrors is null ? null : string.Join(" ", _identityErrors.Select(e => e.Description));
 
     protected override void OnInitialized() => Input ??= new();
 
@@ -82,11 +84,26 @@
         var result = await UserManager.CreateAsync(user, Input.Password);
         if (!result.Succeeded)
         {
-            identityErrors = result.Errors;
+            _identityErrors = result.Errors;
             return;
         }
 
         Logger.LogInformation("User created a new account with password.");
+
+        var userId = await UserManager.GetUserIdAsync(user);
+        if (UserManager.Options.SignIn.RequireConfirmedAccount)
+        {
+            var code = await UserManager.GenerateEmailConfirmationTokenAsync(user);
+            code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
+            var callbackUrl = NavigationManager.GetUriWithQueryParameters(
+                NavigationManager.ToAbsoluteUri("Account/ConfirmEmail").AbsoluteUri,
+                new Dictionary<string, object?> { ["userId"] = userId, ["code"] = code, ["returnUrl"] = ReturnUrl });
+            await EmailSender.SendConfirmationLinkAsync(user, Input.Email, HtmlEncoder.Default.Encode(callbackUrl));
+            RedirectManager.RedirectTo("Account/RegisterConfirmation",
+                new() { ["email"] = Input.Email, ["returnUrl"] = ReturnUrl });
+            return;
+        }
+
         await SignInManager.SignInAsync(user, isPersistent: false);
         RedirectManager.RedirectTo(ReturnUrl);
     }

@@ -5,9 +5,9 @@ using TimesheetTracker.DataModel.Enums;
 namespace TimesheetTracker.Web.Services;
 
 /// <summary>EF Core-backed implementation of <see cref="ITimesheetData"/>, scoped to the signed-in user.</summary>
-public sealed class TimesheetData(TimesheetDbContext db, ICurrentUser user) : ITimesheetData
+public sealed class TimesheetData(TimesheetDbContext db, ICurrentUser user, IClock clock) : ITimesheetData
 {
-    public DateOnly Today => SeedData.Today;
+    public DateOnly Today => clock.Today;
 
     /// <summary>Resolve the signed-in user and activate the per-user query filters for this unit of work.</summary>
     private async Task<Guid> ScopeAsync()
@@ -160,7 +160,7 @@ public sealed class TimesheetData(TimesheetDbContext db, ICurrentUser user) : IT
             var cur = existing.CustomFields.FirstOrDefault(f => f.Id == inc.Id);
             if (cur is null)
             {
-                existing.CustomFields.Add(new JobCustomField
+                existing.CustomFields.Add(new()
                 {
                     Id = inc.Id == Guid.Empty ? Guid.NewGuid() : inc.Id,
                     JobId = existing.Id, Name = inc.Name, Value = inc.Value,
@@ -184,7 +184,7 @@ public sealed class TimesheetData(TimesheetDbContext db, ICurrentUser user) : IT
             var cur = existing.ProjectCodes.FirstOrDefault(p => p.Id == inc.Id);
             if (cur is null)
             {
-                existing.ProjectCodes.Add(new ProjectCode
+                existing.ProjectCodes.Add(new()
                 {
                     Id = inc.Id == Guid.Empty ? Guid.NewGuid() : inc.Id,
                     JobId = existing.Id, Code = inc.Code, Description = inc.Description,

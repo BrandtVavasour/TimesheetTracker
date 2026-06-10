@@ -8,8 +8,8 @@ public static class ExportPeriod
     public static (DateOnly Start, DateOnly End) Range(ExportScope scope, DateOnly anchor) => scope switch
     {
         ExportScope.Week => WeekRange(anchor),
-        ExportScope.Month => (new DateOnly(anchor.Year, anchor.Month, 1),
-                              new DateOnly(anchor.Year, anchor.Month, DateTime.DaysInMonth(anchor.Year, anchor.Month))),
+        ExportScope.Month => (new(anchor.Year, anchor.Month, 1),
+                              new(anchor.Year, anchor.Month, DateTime.DaysInMonth(anchor.Year, anchor.Month))),
         ExportScope.FinancialYear => FinancialYearRange(anchor),
         _ => throw new ArgumentOutOfRangeException(nameof(scope))
     };
@@ -24,6 +24,6 @@ public static class ExportPeriod
     private static (DateOnly, DateOnly) FinancialYearRange(DateOnly anchor)
     {
         var startYear = anchor.Month >= 7 ? anchor.Year : anchor.Year - 1;
-        return (new DateOnly(startYear, 7, 1), new DateOnly(startYear + 1, 6, 30));
+        return (new(startYear, 7, 1), new(startYear + 1, 6, 30));
     }
 }

@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using TimesheetTracker.DataModel;
-using TimesheetTracker.DataModel.Enums;
 
 namespace DataModel.Tests.IntegrationTests;
 
@@ -21,8 +20,10 @@ public class DataScopingTests
         var db = NewContext(nameof(QueryFilter_ScopesJobsToCurrentUser));
         var userA = Guid.NewGuid();
         var userB = Guid.NewGuid();
-        db.Jobs.Add(new Job { Id = Guid.NewGuid(), UserId = userA, Name = "A's job" });
-        db.Jobs.Add(new Job { Id = Guid.NewGuid(), UserId = userB, Name = "B's job" });
+        db.Jobs.Add(new()
+            { Id = Guid.NewGuid(), UserId = userA, Name = "A's job" });
+        db.Jobs.Add(new()
+            { Id = Guid.NewGuid(), UserId = userB, Name = "B's job" });
         await db.SaveChangesAsync();
 
         db.CurrentUserId = userA;
@@ -82,9 +83,9 @@ public class DataScopingTests
     private static TimeEntry Entry() => new()
     {
         Id = Guid.NewGuid(),
-        WorkDate = new DateOnly(2026, 6, 9),
-        StartTime = new TimeOnly(9, 0),
-        EndTime = new TimeOnly(17, 0),
+        WorkDate = new(2026, 6, 9),
+        StartTime = new(9, 0),
+        EndTime = new(17, 0),
         BreakMinutes = 30,
     };
 }

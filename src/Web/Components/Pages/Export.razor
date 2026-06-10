@@ -3,7 +3,7 @@
 @inject ITimesheetData Data
 @inject ITimeCalculationService Calc
 @inject IExportService ExportSvc
-@inject IJSRuntime JS
+@inject IJSRuntime Js
 @using TimesheetTracker.DataModel.Services.Export
 
 <PageHead Title="Export" Subtitle="Download a week, month, or financial year as a worksheet." />
@@ -202,7 +202,7 @@ else
         var (from, _) = ExportPeriod.Range(_scope, _ref);
         var slug = System.Text.RegularExpressions.Regex.Replace(_job.Name, "[^a-zA-Z0-9]+", "-").Trim('-');
         var filename = $"{slug}_{_scope}_{from:yyyy-MM-dd}.xlsx";
-        await JS.InvokeVoidAsync("tsDownload", filename, Convert.ToBase64String(bytes),
+        await Js.InvokeVoidAsync("tsDownload", filename, Convert.ToBase64String(bytes),
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
         _done = true;
     }
