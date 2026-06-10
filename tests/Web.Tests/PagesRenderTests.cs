@@ -25,13 +25,18 @@ public class PagesRenderTests
         ctx.Services.AddScoped<ITimeCalculationService, TimeCalculationService>();
         ctx.Services.AddScoped<IHolidayService, HolidayService>();
         ctx.Services.AddScoped<IExportService, ExportService>();
-        ctx.Services.AddScoped<ICurrentUser, DemoCurrentUser>();
+        ctx.Services.AddScoped<ICurrentUser>(_ => new StubCurrentUser(SeedData.DemoUserId));
         ctx.Services.AddScoped<ITimesheetData, TimesheetData>();
 
         using var scope = ctx.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<TimesheetDbContext>();
         SeedData.SeedAsync(db).GetAwaiter().GetResult();
         return ctx;
+    }
+
+    private sealed class StubCurrentUser(Guid id) : ICurrentUser
+    {
+        public Task<Guid?> GetIdAsync() => Task.FromResult<Guid?>(id);
     }
 
     [Test]

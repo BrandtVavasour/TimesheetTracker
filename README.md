@@ -10,6 +10,8 @@ Built with **.NET 10 · Blazor Web App (Interactive Server) · EF Core + Postgre
 
 | | Desktop | Mobile |
 |---|---|---|
+| **Sign in** | ![](docs/screenshots/login-desktop.png) | ![](docs/screenshots/login-mobile.png) |
+| **Register** | ![](docs/screenshots/register-desktop.png) | ![](docs/screenshots/register-mobile.png) |
 | **Weekly timesheet** | ![](docs/screenshots/weekly-desktop.png) | ![](docs/screenshots/weekly-mobile.png) |
 | **Calendar** | ![](docs/screenshots/calendar-desktop.png) | ![](docs/screenshots/calendar-mobile.png) |
 | **Jobs editor** | ![](docs/screenshots/jobs-desktop.png) | ![](docs/screenshots/jobs-mobile.png) |
@@ -48,7 +50,14 @@ dotnet run --project src/Web
 # → http://localhost:5199
 ```
 
-To run against PostgreSQL, set `UseInMemoryDatabase=false` and a connection string
+The app requires sign-in. In Development the seed creates a ready-to-use account:
+
+- **Email:** `alex@example.com`  **Password:** `TimesheetDev123!`
+
+…or register a new account (it starts empty — create a job to begin). Google sign-in appears
+once `Authentication:Google:ClientId`/`ClientSecret` are configured.
+
+To run against **PostgreSQL**, set `UseInMemoryDatabase=false` and the connection string
 (`ConnectionStrings:Default`) via environment/user-secrets, then apply migrations:
 
 ```bash
@@ -72,6 +81,13 @@ suite on every push and pull request.
 - **Per-user query filters** on every owned entity (Job/TimeEntry/JobCustomField/ProjectCode)
   scope all reads to the signed-in user — defence in depth against cross-user (IDOR) access.
 - **EF Core parameterises all queries** (no raw SQL).
-- **Identity** enforces a 12-char password policy, lockout, unique email, and confirmed accounts.
+- **Authentication** is real ASP.NET Core Identity (cookie auth) with register/login/logout and
+  Google external login; app pages require sign-in (`[Authorize]`), and `ICurrentUser` resolves
+  the signed-in user so the query filters scope data to them.
+- **Identity** enforces a 12-char password policy, lockout, and unique email.
 - HTTPS redirection + HSTS in production; antiforgery enabled; secrets via environment /
   user-secrets (never committed).
+
+> **Before production:** email confirmation is currently off (`RequireConfirmedAccount = false`)
+> because no email sender is wired. Plug in a real `IEmailSender<AppUser>` (e.g. AWS SES) and
+> re-enable confirmation.

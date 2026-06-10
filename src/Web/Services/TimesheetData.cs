@@ -4,64 +4,78 @@ using TimesheetTracker.DataModel.Enums;
 
 namespace TimesheetTracker.Web.Services;
 
-/// <summary>EF Core-backed implementation of <see cref="ITimesheetData"/>, scoped to the current user.</summary>
-public sealed class TimesheetData : ITimesheetData
+/// <summary>EF Core-backed implementation of <see cref="ITimesheetData"/>, scoped to the signed-in user.</summary>
+public sealed class TimesheetData(TimesheetDbContext db, ICurrentUser user) : ITimesheetData
 {
-    private readonly TimesheetDbContext _db;
-    private readonly ICurrentUser _user;
-
-    public TimesheetData(TimesheetDbContext db, ICurrentUser user)
-    {
-        _db = db;
-        _user = user;
-        _db.CurrentUserId = user.Id; // activates the per-user query filters
-    }
-
     public DateOnly Today => SeedData.Today;
 
-    public async Task<AppUser> CurrentUserAsync() =>
-        await _db.Users.AsNoTracking().FirstAsync(u => u.Id == _user.Id);
+    /// <summary>Resolve the signed-in user and activate the per-user query filters for this unit of work.</summary>
+    private async Task<Guid> ScopeAsync()
+    {
+        var id = await user.GetIdAsync() ?? Guid.Empty;
+        db.CurrentUserId = id;
+        return id;
+    }
 
-    public async Task<IReadOnlyList<Job>> ActiveJobsAsync() =>
-        await _db.Jobs.AsNoTracking()
+    public async Task<AppUser> CurrentUserAsync()
+    {
+        var id = await ScopeAsync();
+        return await db.Users.AsNoTracking().FirstAsync(u => u.Id == id);
+    }
+
+    public async Task<IReadOnlyList<Job>> ActiveJobsAsync()
+    {
+        await ScopeAsync();
+        return await db.Jobs.AsNoTracking()
             .Include(j => j.CustomFields)
             .Include(j => j.ProjectCodes)
             .Where(j => !j.IsArchived)
             .OrderBy(j => j.DisplayOrder)
             .ToListAsync();
+    }
 
-    public async Task<IReadOnlyList<Job>> AllJobsAsync() =>
-        await _db.Jobs.AsNoTracking()
+    public async Task<IReadOnlyList<Job>> AllJobsAsync()
+    {
+        await ScopeAsync();
+        return await db.Jobs.AsNoTracking()
             .Include(j => j.CustomFields)
             .Include(j => j.ProjectCodes)
             .OrderBy(j => j.DisplayOrder)
             .ToListAsync();
+    }
 
-    public async Task<Job?> JobAsync(Guid id) =>
-        await _db.Jobs.AsNoTracking()
+    public async Task<Job?> JobAsync(Guid id)
+    {
+        await ScopeAsync();
+        return await db.Jobs.AsNoTracking()
             .Include(j => j.CustomFields)
             .Include(j => j.ProjectCodes)
             .FirstOrDefaultAsync(j => j.Id == id);
+    }
 
-    public async Task<IReadOnlyList<TimeEntry>> EntriesAsync(Guid jobId, DateOnly from, DateOnly to) =>
-        await _db.TimeEntries.AsNoTracking()
+    public async Task<IReadOnlyList<TimeEntry>> EntriesAsync(Guid jobId, DateOnly from, DateOnly to)
+    {
+        await ScopeAsync();
+        return await db.TimeEntries.AsNoTracking()
             .Include(e => e.ProjectCode)
             .Where(e => e.JobId == jobId && e.WorkDate >= from && e.WorkDate <= to)
             .OrderBy(e => e.WorkDate).ThenBy(e => e.StartTime)
             .ToListAsync();
+    }
 
     public async Task SaveEntryAsync(Guid jobId, TimeEntry entry)
     {
-        // Ownership is enforced by the query filter: a non-owned job returns null.
-        if (!await _db.Jobs.AnyAsync(j => j.Id == jobId)) return;
+        await ScopeAsync();
+        // Ownership is enforced by the query filter: a non-owned job is invisible.
+        if (!await db.Jobs.AnyAsync(j => j.Id == jobId)) return;
 
-        var existing = await _db.TimeEntries.FirstOrDefaultAsync(e => e.Id == entry.Id);
+        var existing = await db.TimeEntries.FirstOrDefaultAsync(e => e.Id == entry.Id);
         if (existing is null)
         {
             entry.JobId = jobId;
             entry.ProjectCode = null;
             entry.CreatedDate = DateTime.UtcNow;
-            _db.TimeEntries.Add(entry);
+            db.TimeEntries.Add(entry);
         }
         else
         {
@@ -73,20 +87,22 @@ public sealed class TimesheetData : ITimesheetData
             existing.ProjectCodeId = entry.ProjectCodeId;
             existing.ModifiedDate = DateTime.UtcNow;
         }
-        await _db.SaveChangesAsync();
+        await db.SaveChangesAsync();
     }
 
     public async Task DeleteEntryAsync(Guid jobId, Guid entryId)
     {
-        var existing = await _db.TimeEntries.FirstOrDefaultAsync(e => e.Id == entryId && e.JobId == jobId);
+        await ScopeAsync();
+        var existing = await db.TimeEntries.FirstOrDefaultAsync(e => e.Id == entryId && e.JobId == jobId);
         if (existing is null) return;
-        _db.TimeEntries.Remove(existing);
-        await _db.SaveChangesAsync();
+        db.TimeEntries.Remove(existing);
+        await db.SaveChangesAsync();
     }
 
     public async Task SaveJobAsync(Job job)
     {
-        var existing = await _db.Jobs
+        await ScopeAsync();
+        var existing = await db.Jobs
             .Include(j => j.CustomFields)
             .Include(j => j.ProjectCodes)
             .FirstOrDefaultAsync(j => j.Id == job.Id);
@@ -102,36 +118,38 @@ public sealed class TimesheetData : ITimesheetData
         SyncCustomFields(existing, job.CustomFields);
         SyncProjectCodes(existing, job.ProjectCodes);
 
-        await _db.SaveChangesAsync();
+        await db.SaveChangesAsync();
     }
 
     public async Task<Job> AddJobAsync()
     {
-        var maxOrder = await _db.Jobs.MaxAsync(j => (int?)j.DisplayOrder) ?? -1;
+        var userId = await ScopeAsync();
+        var maxOrder = await db.Jobs.MaxAsync(j => (int?)j.DisplayOrder) ?? -1;
         var job = new Job
         {
             Id = Guid.NewGuid(),
-            UserId = _user.Id,
+            UserId = userId,
             Name = "New job",
             DecimalPlaces = 2,
             WorkDays = DaysOfWeek.Weekdays,
             DisplayOrder = maxOrder + 1,
             CreatedDate = DateTime.UtcNow,
         };
-        _db.Jobs.Add(job);
-        await _db.SaveChangesAsync();
+        db.Jobs.Add(job);
+        await db.SaveChangesAsync();
         return job;
     }
 
     public async Task UpdateUserAsync(string displayName, AustralianState defaultState)
     {
-        var user = await _db.Users.FirstAsync(u => u.Id == _user.Id);
-        user.DisplayName = displayName;
-        user.DefaultState = defaultState;
-        await _db.SaveChangesAsync();
+        var id = await ScopeAsync();
+        var appUser = await db.Users.FirstAsync(u => u.Id == id);
+        appUser.DisplayName = displayName;
+        appUser.DefaultState = defaultState;
+        await db.SaveChangesAsync();
     }
 
-    public AustralianState EffectiveState(Job job, AppUser user) => job.StateOverride ?? user.DefaultState;
+    public AustralianState EffectiveState(Job job, AppUser appUser) => job.StateOverride ?? appUser.DefaultState;
 
     private static void SyncCustomFields(Job existing, ICollection<JobCustomField> incoming)
     {

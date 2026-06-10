@@ -1,0 +1,42 @@
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Identity
+@using TimesheetTracker.DataModel
+
+@inject SignInManager<AppUser> SignInManager
+
+@if (externalLogins.Length > 0)
+{
+    <form action="Account/PerformExternalLogin" method="post">
+        <AntiforgeryToken />
+        <input type="hidden" name="ReturnUrl" value="@ReturnUrl" />
+        <div style="display:flex;flex-direction:column;gap:8px;">
+            @foreach (var provider in externalLogins)
+            {
+                <button type="submit" name="provider" value="@provider.Name" title="Sign in with @provider.DisplayName" class="focusable"
+                        style="display:inline-flex;align-items:center;justify-content:center;gap:10px;height:42px;border-radius:var(--r-sm);cursor:pointer;
+                               border:1px solid var(--line-strong);background:var(--surface);color:var(--text);font-size:14px;font-weight:600;">
+                    @if (provider.Name == "Google")
+                    {
+                        <svg width="18" height="18" viewBox="0 0 48 48" style="flex:none;display:block;">
+                            <path fill="#4285F4" d="M45.1 24.5c0-1.6-.1-2.7-.4-3.9H24v7.1h12.1c-.2 1.8-1.6 4.6-4.5 6.5l-.04.3 6.6 5.1.5.05c4.2-3.9 6.6-9.6 6.6-15.2Z"/>
+                            <path fill="#34A853" d="M24 46c5.9 0 10.9-2 14.5-5.3l-6.9-5.4c-1.9 1.3-4.3 2.2-7.6 2.2-5.8 0-10.7-3.8-12.4-9.1l-.3.02-6.9 5.3-.1.3C7.8 41 15.3 46 24 46Z"/>
+                            <path fill="#FBBC05" d="M11.6 28.4c-.5-1.3-.7-2.7-.7-4.4s.3-3.1.7-4.4l-.01-.3-7-5.4-.2.1C2.9 17.1 2 20.4 2 24s.9 6.9 2.5 10l7.1-5.6Z"/>
+                            <path fill="#EB4335" d="M24 9.5c4.1 0 6.9 1.8 8.5 3.3l6.2-6C34.9 3.3 29.9 1 24 1 15.3 1 7.8 6 4.5 14l7.1 5.6C13.3 13.3 18.2 9.5 24 9.5Z"/>
+                        </svg>
+                    }
+                    Continue with @provider.DisplayName
+                </button>
+            }
+        </div>
+    </form>
+}
+
+@code {
+    private AuthenticationScheme[] externalLogins = [];
+
+    [SupplyParameterFromQuery]
+    private string? ReturnUrl { get; set; }
+
+    protected override async Task OnInitializedAsync() =>
+        externalLogins = (await SignInManager.GetExternalAuthenticationSchemesAsync()).ToArray();
+}

@@ -1,0 +1,119 @@
+@page "/Account/Register"
+
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Identity
+@using TimesheetTracker.DataModel
+
+@inject UserManager<AppUser> UserManager
+@inject IUserStore<AppUser> UserStore
+@inject SignInManager<AppUser> SignInManager
+@inject ILogger<Register> Logger
+@inject NavigationManager NavigationManager
+@inject IdentityRedirectManager RedirectManager
+
+<PageTitle>Create account · Timesheet Tracker</PageTitle>
+
+<AuthShell Title="Create your account" Subtitle="Track your hours across jobs in minutes.">
+    <StatusMessage Message="@Message" />
+    <EditForm Model="Input" method="post" OnValidSubmit="RegisterUser" FormName="register">
+        <DataAnnotationsValidator />
+        <div style="display:flex;flex-direction:column;gap:14px;">
+            <label style="display:flex;flex-direction:column;gap:6px;">
+                <span style="font-size:12.5px;font-weight:600;color:var(--text-soft);">Display name</span>
+                <InputText @bind-Value="Input.DisplayName" class="input" autocomplete="name" placeholder="Your name" />
+                <ValidationMessage For="() => Input.DisplayName" style="font-size:12px;color:var(--danger);" />
+            </label>
+            <label style="display:flex;flex-direction:column;gap:6px;">
+                <span style="font-size:12.5px;font-weight:600;color:var(--text-soft);">Email</span>
+                <InputText @bind-Value="Input.Email" class="input" autocomplete="username" placeholder="name@example.com" />
+                <ValidationMessage For="() => Input.Email" style="font-size:12px;color:var(--danger);" />
+            </label>
+            <label style="display:flex;flex-direction:column;gap:6px;">
+                <span style="font-size:12.5px;font-weight:600;color:var(--text-soft);">Password</span>
+                <InputText type="password" @bind-Value="Input.Password" class="input" autocomplete="new-password" placeholder="At least 12 characters" />
+                <ValidationMessage For="() => Input.Password" style="font-size:12px;color:var(--danger);" />
+            </label>
+            <label style="display:flex;flex-direction:column;gap:6px;">
+                <span style="font-size:12.5px;font-weight:600;color:var(--text-soft);">Confirm password</span>
+                <InputText type="password" @bind-Value="Input.ConfirmPassword" class="input" autocomplete="new-password" placeholder="••••••••" />
+                <ValidationMessage For="() => Input.ConfirmPassword" style="font-size:12px;color:var(--danger);" />
+            </label>
+            <button type="submit" class="ts-btn focusable" data-variant="primary"
+                    style="display:inline-flex;align-items:center;justify-content:center;height:42px;font-size:15px;font-weight:600;border-radius:var(--r-sm);cursor:pointer;border:1px solid transparent;background:var(--accent);color:#fff;box-shadow:var(--sh-1);">
+                Create account
+            </button>
+        </div>
+    </EditForm>
+
+    <div style="display:flex;align-items:center;gap:10px;margin:18px 0;">
+        <span style="flex:1;height:1px;background:var(--line);"></span>
+        <span style="font-size:11.5px;color:var(--text-mute);">OR</span>
+        <span style="flex:1;height:1px;background:var(--line);"></span>
+    </div>
+    <ExternalLoginPicker />
+
+    <p style="margin:18px 0 0;font-size:13px;color:var(--text-soft);text-align:center;">
+        Already have an account?
+        <a href="@(NavigationManager.GetUriWithQueryParameters("Account/Login", new Dictionary<string, object?> { ["ReturnUrl"] = ReturnUrl }))"
+           style="color:var(--accent);font-weight:600;text-decoration:none;">Sign in</a>
+    </p>
+</AuthShell>
+
+@code {
+    private IEnumerable<IdentityError>? identityErrors;
+
+    [SupplyParameterFromForm]
+    private InputModel Input { get; set; } = default!;
+
+    [SupplyParameterFromQuery]
+    private string? ReturnUrl { get; set; }
+
+    private string? Message => identityErrors is null ? null : string.Join(" ", identityErrors.Select(e => e.Description));
+
+    protected override void OnInitialized() => Input ??= new();
+
+    public async Task RegisterUser(EditContext editContext)
+    {
+        var user = Activator.CreateInstance<AppUser>();
+        user.DisplayName = Input.DisplayName;
+        await UserStore.SetUserNameAsync(user, Input.Email, CancellationToken.None);
+        await GetEmailStore().SetEmailAsync(user, Input.Email, CancellationToken.None);
+
+        var result = await UserManager.CreateAsync(user, Input.Password);
+        if (!result.Succeeded)
+        {
+            identityErrors = result.Errors;
+            return;
+        }
+
+        Logger.LogInformation("User created a new account with password.");
+        await SignInManager.SignInAsync(user, isPersistent: false);
+        RedirectManager.RedirectTo(ReturnUrl);
+    }
+
+    private IUserEmailStore<AppUser> GetEmailStore()
+    {
+        if (!UserManager.SupportsUserEmail)
+        {
+            throw new NotSupportedException("The user store requires email support.");
+        }
+        return (IUserEmailStore<AppUser>)UserStore;
+    }
+
+    private sealed class InputModel
+    {
+        [Required, StringLength(200), Display(Name = "Display name")]
+        public string DisplayName { get; set; } = "";
+
+        [Required, EmailAddress]
+        public string Email { get; set; } = "";
+
+        [Required, StringLength(100, MinimumLength = 12, ErrorMessage = "Password must be at least 12 characters.")]
+        [DataType(DataType.Password)]
+        public string Password { get; set; } = "";
+
+        [DataType(DataType.Password)]
+        [Compare(nameof(Password), ErrorMessage = "Passwords do not match.")]
+        public string ConfirmPassword { get; set; } = "";
+    }
+}
