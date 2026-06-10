@@ -74,6 +74,37 @@ The Testcontainers-based PostgreSQL integration test is marked `[Explicit]` (req
 all other tests run against EF InMemory. CI (`.github/workflows/ci.yml`) builds and runs the
 suite on every push and pull request.
 
+## Deploy (Docker / Portainer)
+
+Build the image and push it to your registry, then deploy the stack in Portainer:
+
+```bash
+docker build -f docker/Dockerfile.web -t gitea.jabtech.com.au/<user>/timesheettracker-web:latest .
+docker push gitea.jabtech.com.au/<user>/timesheettracker-web:latest
+```
+
+The stack and its environment template live in [`deployment/timesheet/`](deployment/timesheet/).
+In Portainer, create a stack from `docker-compose.yml` and supply a `.env`
+(see `.env.example`) — the only values you fill are the **Postgres credentials** and the
+**Google client secret**; the Google **client id** and DB host/name are already set.
+
+Configuration is env-var driven (the deploy fills these):
+
+| Variable | Purpose |
+|---|---|
+| `DATABASE_CONNECTION_STRING` | Npgsql connection string (Postgres) |
+| `GOOGLE_CLIENT_ID_WEB` | Google OAuth client id (baked into the compose) |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret (`.env`) |
+| `DATA_PROTECTION_KEYS_PATH` | Where auth/antiforgery keys persist (volume) |
+
+On startup the app **applies EF Core migrations automatically** and serves a liveness probe at
+`/health/live`. It runs as a non-root user on port `8080`, persists Data Protection keys to a
+volume (so logins survive restarts), and honours `X-Forwarded-Proto/For` from the reverse proxy
+(cloudflared / NPM) so OAuth redirects and Secure cookies work behind TLS termination.
+
+> **Google OAuth:** add your production redirect URI `https://<your-domain>/signin-google` to the
+> authorized redirect URIs for this client in the Google Cloud console.
+
 ## Security & conventions
 
 - **Central package management** (`Directory.Packages.props`); `.editorconfig` shared with the
