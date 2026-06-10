@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using TimesheetTracker.DataModel.Enums;
 
@@ -16,11 +17,16 @@ public static class SeedData
     /// <summary>The seed "today" — within the sample week so highlighting reads naturally.</summary>
     public static readonly DateOnly Today = new(2026, 6, 11);
 
+    /// <summary>The seeded demo account's dev password (Development only) — lets you sign in to see the sample week.</summary>
+    public const string DemoPassword = "TimesheetDev123!";
+
     /// <summary>Idempotently seed the database if it has no users.</summary>
     public static async Task SeedAsync(TimesheetDbContext db, CancellationToken cancel = default)
     {
         if (await db.Users.AnyAsync(cancel)) return;
-        db.Users.Add(BuildUser());
+        var demoUser = BuildUser();
+        demoUser.PasswordHash = new PasswordHasher<AppUser>().HashPassword(demoUser, DemoPassword);
+        db.Users.Add(demoUser);
         db.Jobs.AddRange(BuildJobs(DemoUserId));
         await db.SaveChangesAsync(cancel);
     }

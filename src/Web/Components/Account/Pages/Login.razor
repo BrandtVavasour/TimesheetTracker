@@ -1,0 +1,109 @@
+@page "/Account/Login"
+
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Identity
+@using TimesheetTracker.DataModel
+
+@inject SignInManager<AppUser> SignInManager
+@inject ILogger<Login> Logger
+@inject NavigationManager NavigationManager
+@inject IdentityRedirectManager RedirectManager
+
+<PageTitle>Sign in · Timesheet Tracker</PageTitle>
+
+<AuthShell Title="Sign in" Subtitle="Welcome back. Enter your details to continue.">
+    <StatusMessage Message="@errorMessage" />
+    <EditForm EditContext="editContext" method="post" OnValidSubmit="LoginUser" FormName="login">
+        <DataAnnotationsValidator />
+        <div style="display:flex;flex-direction:column;gap:14px;">
+            <label style="display:flex;flex-direction:column;gap:6px;">
+                <span style="font-size:12.5px;font-weight:600;color:var(--text-soft);">Email</span>
+                <InputText @bind-Value="Input.Email" class="input" autocomplete="username" placeholder="name@example.com" />
+                <ValidationMessage For="() => Input.Email" style="font-size:12px;color:var(--danger);" />
+            </label>
+            <label style="display:flex;flex-direction:column;gap:6px;">
+                <span style="font-size:12.5px;font-weight:600;color:var(--text-soft);">Password</span>
+                <InputText type="password" @bind-Value="Input.Password" class="input" autocomplete="current-password" placeholder="••••••••" />
+                <ValidationMessage For="() => Input.Password" style="font-size:12px;color:var(--danger);" />
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-soft);cursor:pointer;">
+                <InputCheckbox @bind-Value="Input.RememberMe" /> Remember me
+            </label>
+            <button type="submit" class="ts-btn focusable" data-variant="primary"
+                    style="display:inline-flex;align-items:center;justify-content:center;height:42px;font-size:15px;font-weight:600;border-radius:var(--r-sm);cursor:pointer;border:1px solid transparent;background:var(--accent);color:#fff;box-shadow:var(--sh-1);">
+                Sign in
+            </button>
+        </div>
+    </EditForm>
+
+    <div style="display:flex;align-items:center;gap:10px;margin:18px 0;">
+        <span style="flex:1;height:1px;background:var(--line);"></span>
+        <span style="font-size:11.5px;color:var(--text-mute);">OR</span>
+        <span style="flex:1;height:1px;background:var(--line);"></span>
+    </div>
+    <ExternalLoginPicker />
+
+    <p style="margin:18px 0 0;font-size:13px;color:var(--text-soft);text-align:center;">
+        New here?
+        <a href="@(NavigationManager.GetUriWithQueryParameters("Account/Register", new Dictionary<string, object?> { ["ReturnUrl"] = ReturnUrl }))"
+           style="color:var(--accent);font-weight:600;text-decoration:none;">Create an account</a>
+    </p>
+</AuthShell>
+
+@code {
+    private string? errorMessage;
+    private EditContext editContext = default!;
+
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    [SupplyParameterFromForm]
+    private InputModel Input { get; set; } = default!;
+
+    [SupplyParameterFromQuery]
+    private string? ReturnUrl { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Input ??= new();
+        editContext = new EditContext(Input);
+
+        if (HttpMethods.IsGet(HttpContext.Request.Method))
+        {
+            // Clear any stale external cookie for a clean login process.
+            await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
+        }
+    }
+
+    public async Task LoginUser()
+    {
+        var result = await SignInManager.PasswordSignInAsync(Input.Email, Input.Password, Input.RememberMe, lockoutOnFailure: true);
+        if (result.Succeeded)
+        {
+            Logger.LogInformation("User logged in.");
+            RedirectManager.RedirectTo(ReturnUrl);
+        }
+        else if (result.IsLockedOut)
+        {
+            Logger.LogWarning("User account locked out.");
+            RedirectManager.RedirectTo("Account/Lockout");
+        }
+        else
+        {
+            errorMessage = "Invalid email or password.";
+        }
+    }
+
+    private sealed class InputModel
+    {
+        [Required, EmailAddress]
+        public string Email { get; set; } = "";
+
+        [Required, DataType(DataType.Password)]
+        public string Password { get; set; } = "";
+
+        [Display(Name = "Remember me?")]
+        public bool RememberMe { get; set; }
+    }
+}

@@ -7,7 +7,21 @@
 
 @if (_job is null)
 {
-    <div style="padding:40px;color:var(--text-mute);">Loading…</div>
+    @if (!_loaded)
+    {
+        <div style="padding:40px;color:var(--text-mute);">Loading…</div>
+    }
+    else
+    {
+        <div style="margin-top:22px;display:flex;flex-direction:column;align-items:center;gap:14px;padding:48px 24px;border-radius:var(--r-lg);background:var(--surface);border:1px dashed var(--line-strong);text-align:center;">
+            <span style="width:48px;height:48px;border-radius:12px;background:var(--accent-tint);color:var(--accent);display:grid;place-items:center;"><Icon Name="briefcase" Size="24" /></span>
+            <div>
+                <div style="font-size:16px;font-weight:700;">No jobs yet</div>
+                <div style="font-size:13.5px;color:var(--text-soft);margin-top:2px;">Create your first job to start tracking hours.</div>
+            </div>
+            <Btn Variant="primary" Icon="plus" Href="jobs">Create a job</Btn>
+        </div>
+    }
 }
 else
 {
@@ -283,6 +297,7 @@ else
 
     private bool _jobMenu;
     private bool _showNote = true;
+    private bool _loaded;
 
     private bool _editorOpen;
     private bool _draftIsNew;
@@ -295,6 +310,7 @@ else
         _user = await Data.CurrentUserAsync();
         _jobs = await Data.ActiveJobsAsync();
         if (_jobs.Count > 0) await SelectJob(_jobs[0].Id);
+        _loaded = true;
     }
 
     private DateOnly? WeekFromQuery()

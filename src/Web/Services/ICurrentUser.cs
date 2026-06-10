@@ -1,18 +1,20 @@
-using TimesheetTracker.DataModel;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Components.Authorization;
 
 namespace TimesheetTracker.Web.Services;
 
-/// <summary>The signed-in user's id. Implementations resolve it from the auth context.</summary>
+/// <summary>The signed-in user's id, resolved from the authentication state.</summary>
 public interface ICurrentUser
 {
-    Guid Id { get; }
+    Task<Guid?> GetIdAsync();
 }
 
-/// <summary>
-/// Development stand-in: the seeded demo user. Replaced by an Identity-backed
-/// implementation once the sign-in flow is wired.
-/// </summary>
-public sealed class DemoCurrentUser : ICurrentUser
+public sealed class CurrentUser(AuthenticationStateProvider authStateProvider) : ICurrentUser
 {
-    public Guid Id => SeedData.DemoUserId;
+    public async Task<Guid?> GetIdAsync()
+    {
+        var state = await authStateProvider.GetAuthenticationStateAsync();
+        var id = state.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        return Guid.TryParse(id, out var guid) ? guid : null;
+    }
 }

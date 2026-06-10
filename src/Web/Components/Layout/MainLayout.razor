@@ -2,6 +2,7 @@
 @inject NavigationManager Nav
 @inject ITimesheetData Data
 @implements IDisposable
+@using Microsoft.AspNetCore.Components.Authorization
 
 <div style="min-height:100%;display:flex;flex-direction:column;">
     <header style="position:sticky;top:0;z-index:100;background:rgba(255,255,255,0.82);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);">
@@ -24,12 +25,20 @@
                     </a>
                 }
             </nav>
-            <div style="margin-left:auto;display:flex;align-items:center;gap:10px;flex:none;">
+            <div style="margin-left:auto;display:flex;align-items:center;gap:8px;flex:none;">
                 <a href="profile" class="focusable" title="@_displayName"
                    style="width:34px;height:34px;border-radius:99px;border:1px solid var(--line-strong);background:var(--accent);color:#fff;
                           font-weight:700;font-size:13px;display:grid;place-items:center;text-decoration:none;">
                     @Initials
                 </a>
+                <form action="Account/Logout" method="post" style="display:inline-flex;">
+                    <AntiforgeryToken />
+                    <input type="hidden" name="ReturnUrl" value="" />
+                    <button type="submit" class="ts-iconbtn focusable" title="Sign out"
+                            style="width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;border-radius:var(--r-sm);border:1px solid transparent;background:transparent;color:var(--text-soft);cursor:pointer;">
+                        <Icon Name="logout" Size="17" />
+                    </button>
+                </form>
             </div>
         </div>
     </header>
@@ -55,10 +64,15 @@
     private string Initials => string.Concat(
         _displayName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(s => s[0]));
 
+    [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
+
     protected override async Task OnInitializedAsync()
     {
         Nav.LocationChanged += OnLocationChanged;
-        _displayName = (await Data.CurrentUserAsync()).DisplayName;
+        if (AuthState is not null && (await AuthState).User.Identity?.IsAuthenticated == true)
+        {
+            _displayName = (await Data.CurrentUserAsync()).DisplayName;
+        }
     }
     private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e) => StateHasChanged();
     public void Dispose() => Nav.LocationChanged -= OnLocationChanged;

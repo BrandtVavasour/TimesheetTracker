@@ -1,0 +1,19 @@
+<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:40px 16px;background:var(--bg);">
+    <div style="width:100%;max-width:400px;">
+        <div style="display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:20px;">
+            <span style="width:34px;height:34px;border-radius:9px;background:var(--accent);color:#fff;display:grid;place-items:center;"><Icon Name="clock" Size="20" Stroke="2" /></span>
+            <span style="font-size:18px;font-weight:700;letter-spacing:-0.02em;">Timesheet</span>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--sh-2);padding:26px 24px;">
+            <h1 style="margin:0 0 4px;font-size:20px;font-weight:700;letter-spacing:-0.02em;">@Title</h1>
+            <p style="margin:0 0 20px;font-size:13.5px;color:var(--text-soft);">@Subtitle</p>
+            @ChildContent
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = "";
+    [Parameter] public string? Subtitle { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}
