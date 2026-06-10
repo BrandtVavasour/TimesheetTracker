@@ -1,0 +1,35 @@
+@page "/Error"
+@using System.Diagnostics
+@attribute [AllowAnonymous]
+@layout TimesheetTracker.Web.Components.Layout.EmptyLayout
+
+<PageTitle>Error · Timesheet Tracker</PageTitle>
+
+<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:40px 16px;background:var(--bg);">
+    <div style="width:100%;max-width:420px;text-align:center;">
+        <span style="width:48px;height:48px;border-radius:12px;background:var(--danger-tint);color:var(--danger);display:inline-grid;place-items:center;margin-bottom:14px;">
+            <Icon Name="info" Size="24" />
+        </span>
+        <h1 style="margin:0 0 4px;font-size:22px;font-weight:700;letter-spacing:-0.02em;">Something went wrong</h1>
+        <p style="margin:0 0 18px;font-size:14px;color:var(--text-soft);">
+            An unexpected error occurred while processing your request. Please try again.
+        </p>
+        @if (ShowRequestId)
+        {
+            <p style="font-size:12px;color:var(--text-mute);">
+                Request ID: <code class="mono">@RequestId</code>
+            </p>
+        }
+        <a href="/" style="color:var(--accent);font-weight:600;text-decoration:none;">← Back to timesheet</a>
+    </div>
+</div>
+
+@code {
+    [CascadingParameter] private HttpContext? HttpContext { get; set; }
+
+    private string? RequestId { get; set; }
+    private bool ShowRequestId => !string.IsNullOrEmpty(RequestId);
+
+    protected override void OnInitialized() =>
+        RequestId = Activity.Current?.Id ?? HttpContext?.TraceIdentifier;
+}

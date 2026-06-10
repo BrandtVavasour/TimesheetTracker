@@ -10,7 +10,7 @@ public class ExportService(ITimeCalculationService calc, IHolidayService holiday
         foreach (var e in entries.OrderBy(e => e.WorkDate).ThenBy(e => e.StartTime))
         {
             var isHoliday = holidays.IsPublicHoliday(e.WorkDate, context.State, out var holidayName);
-            rows.Add(new TimesheetRow
+            rows.Add(new()
             {
                 Date = e.WorkDate.ToString("yyyy-MM-dd"),
                 Day = e.WorkDate.DayOfWeek.ToString(),

@@ -1,4 +1,4 @@
-@inject IJSRuntime JS
+@inject IJSRuntime Js
 
 <button @onclick="Copy" title="@($"Copy {Name}: {Value}")" class="copyfield focusable"
         style="display:inline-flex;flex-direction:column;line-height:1.2;padding:5px 11px;cursor:pointer;text-align:left;border-radius:var(--r-sm);
@@ -20,7 +20,7 @@
 
     private async Task Copy()
     {
-        await JS.InvokeVoidAsync("tsCopy", Value);
+        await Js.InvokeVoidAsync("tsCopy", Value);
         _done = true;
         StateHasChanged();
         await Task.Delay(1100);

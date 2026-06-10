@@ -1,16 +1,14 @@
 @using Microsoft.AspNetCore.Authentication
-@using Microsoft.AspNetCore.Identity
-@using TimesheetTracker.DataModel
 
 @inject SignInManager<AppUser> SignInManager
 
-@if (externalLogins.Length > 0)
+@if (_externalLogins.Length > 0)
 {
     <form action="Account/PerformExternalLogin" method="post">
         <AntiforgeryToken />
         <input type="hidden" name="ReturnUrl" value="@ReturnUrl" />
         <div style="display:flex;flex-direction:column;gap:8px;">
-            @foreach (var provider in externalLogins)
+            @foreach (var provider in _externalLogins)
             {
                 <button type="submit" name="provider" value="@provider.Name" title="Sign in with @provider.DisplayName" class="focusable"
                         style="display:inline-flex;align-items:center;justify-content:center;gap:10px;height:42px;border-radius:var(--r-sm);cursor:pointer;
@@ -32,11 +30,11 @@
 }
 
 @code {
-    private AuthenticationScheme[] externalLogins = [];
+    private AuthenticationScheme[] _externalLogins = [];
 
     [SupplyParameterFromQuery]
     private string? ReturnUrl { get; set; }
 
     protected override async Task OnInitializedAsync() =>
-        externalLogins = (await SignInManager.GetExternalAuthenticationSchemesAsync()).ToArray();
+        _externalLogins = (await SignInManager.GetExternalAuthenticationSchemesAsync()).ToArray();
 }

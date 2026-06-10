@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Identity;
-using TimesheetTracker.DataModel;
 
 namespace TimesheetTracker.Web.Components.Account;
 

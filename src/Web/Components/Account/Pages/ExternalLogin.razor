@@ -2,8 +2,6 @@
 
 @using System.ComponentModel.DataAnnotations
 @using System.Security.Claims
-@using Microsoft.AspNetCore.Identity
-@using TimesheetTracker.DataModel
 
 @inject SignInManager<AppUser> SignInManager
 @inject UserManager<AppUser> UserManager
@@ -15,7 +13,7 @@
 <PageTitle>Finish sign-in · Timesheet Tracker</PageTitle>
 
 <AuthShell Title="Almost there" Subtitle="@($"You've authenticated with {ProviderDisplayName}. Confirm your details to finish.")">
-    <StatusMessage Message="@message" />
+    <StatusMessage Message="@_message" />
     <EditForm Model="Input" OnValidSubmit="OnValidSubmitAsync" FormName="confirmation" method="post">
         <DataAnnotationsValidator />
         <div style="display:flex;flex-direction:column;gap:14px;">
@@ -40,8 +38,8 @@
 @code {
     public const string LoginCallbackAction = "LoginCallback";
 
-    private string? message;
-    private ExternalLoginInfo? externalLoginInfo;
+    private string? _message;
+    private ExternalLoginInfo? _externalLoginInfo;
 
     [CascadingParameter]
     private HttpContext HttpContext { get; set; } = default!;
@@ -58,7 +56,7 @@
     [SupplyParameterFromQuery]
     private string? Action { get; set; }
 
-    private string? ProviderDisplayName => externalLoginInfo?.ProviderDisplayName;
+    private string? ProviderDisplayName => _externalLoginInfo?.ProviderDisplayName;
 
     protected override async Task OnInitializedAsync()
     {
@@ -77,7 +75,7 @@
             return;
         }
 
-        externalLoginInfo = info;
+        _externalLoginInfo = info;
 
         if (HttpMethods.IsGet(HttpContext.Request.Method))
         {
@@ -92,19 +90,19 @@
 
     private async Task OnLoginCallbackAsync()
     {
-        if (externalLoginInfo is null)
+        if (_externalLoginInfo is null)
         {
             RedirectManager.RedirectToWithStatus("Account/Login", "Error loading external login information.", HttpContext);
             return;
         }
 
         var result = await SignInManager.ExternalLoginSignInAsync(
-            externalLoginInfo.LoginProvider, externalLoginInfo.ProviderKey, isPersistent: false, bypassTwoFactor: true);
+            _externalLoginInfo.LoginProvider, _externalLoginInfo.ProviderKey, isPersistent: false, bypassTwoFactor: true);
 
         if (result.Succeeded)
         {
             Logger.LogInformation("{Name} logged in with {LoginProvider} provider.",
-                externalLoginInfo.Principal.Identity?.Name, externalLoginInfo.LoginProvider);
+                _externalLoginInfo.Principal.Identity?.Name, _externalLoginInfo.LoginProvider);
             RedirectManager.RedirectTo(ReturnUrl);
             return;
         }
@@ -115,13 +113,13 @@
         }
 
         // New external user — prefill from the provider's claims.
-        Input.Email = externalLoginInfo.Principal.FindFirstValue(ClaimTypes.Email) ?? "";
-        Input.DisplayName = externalLoginInfo.Principal.FindFirstValue(ClaimTypes.Name) ?? Input.Email;
+        Input.Email = _externalLoginInfo.Principal.FindFirstValue(ClaimTypes.Email) ?? "";
+        Input.DisplayName = _externalLoginInfo.Principal.FindFirstValue(ClaimTypes.Name) ?? Input.Email;
     }
 
     private async Task OnValidSubmitAsync()
     {
-        if (externalLoginInfo is null)
+        if (_externalLoginInfo is null)
         {
             RedirectManager.RedirectToWithStatus("Account/Login", "Error loading external login information during confirmation.", HttpContext);
             return;
@@ -129,22 +127,23 @@
 
         var user = Activator.CreateInstance<AppUser>();
         user.DisplayName = string.IsNullOrWhiteSpace(Input.DisplayName) ? Input.Email : Input.DisplayName;
+        user.EmailConfirmed = true; // the external provider (Google) has verified the email
         await UserStore.SetUserNameAsync(user, Input.Email, CancellationToken.None);
         await GetEmailStore().SetEmailAsync(user, Input.Email, CancellationToken.None);
 
         var result = await UserManager.CreateAsync(user);
         if (result.Succeeded)
         {
-            result = await UserManager.AddLoginAsync(user, externalLoginInfo);
+            result = await UserManager.AddLoginAsync(user, _externalLoginInfo);
             if (result.Succeeded)
             {
-                Logger.LogInformation("User created an account using {Name} provider.", externalLoginInfo.LoginProvider);
-                await SignInManager.SignInAsync(user, isPersistent: false, externalLoginInfo.LoginProvider);
+                Logger.LogInformation("User created an account using {Name} provider.", _externalLoginInfo.LoginProvider);
+                await SignInManager.SignInAsync(user, isPersistent: false, _externalLoginInfo.LoginProvider);
                 RedirectManager.RedirectTo(ReturnUrl);
                 return;
             }
         }
-        message = $"Error: {string.Join(", ", result.Errors.Select(e => e.Description))}";
+        _message = $"Error: {string.Join(", ", result.Errors.Select(e => e.Description))}";
     }
 
     private IUserEmailStore<AppUser> GetEmailStore()

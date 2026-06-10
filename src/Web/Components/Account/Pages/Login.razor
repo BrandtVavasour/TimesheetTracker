@@ -2,8 +2,6 @@
 
 @using System.ComponentModel.DataAnnotations
 @using Microsoft.AspNetCore.Authentication
-@using Microsoft.AspNetCore.Identity
-@using TimesheetTracker.DataModel
 
 @inject SignInManager<AppUser> SignInManager
 @inject ILogger<Login> Logger
@@ -13,8 +11,8 @@
 <PageTitle>Sign in · Timesheet Tracker</PageTitle>
 
 <AuthShell Title="Sign in" Subtitle="Welcome back. Enter your details to continue.">
-    <StatusMessage Message="@errorMessage" />
-    <EditForm EditContext="editContext" method="post" OnValidSubmit="LoginUser" FormName="login">
+    <StatusMessage Message="@_errorMessage" />
+    <EditForm EditContext="_editContext" method="post" OnValidSubmit="LoginUser" FormName="login">
         <DataAnnotationsValidator />
         <div style="display:flex;flex-direction:column;gap:14px;">
             <label style="display:flex;flex-direction:column;gap:6px;">
@@ -49,11 +47,14 @@
         <a href="@(NavigationManager.GetUriWithQueryParameters("Account/Register", new Dictionary<string, object?> { ["ReturnUrl"] = ReturnUrl }))"
            style="color:var(--accent);font-weight:600;text-decoration:none;">Create an account</a>
     </p>
+    <p style="margin:6px 0 0;font-size:13px;text-align:center;">
+        <a href="Account/ForgotPassword" style="color:var(--text-soft);text-decoration:none;">Forgot your password?</a>
+    </p>
 </AuthShell>
 
 @code {
-    private string? errorMessage;
-    private EditContext editContext = default!;
+    private string? _errorMessage;
+    private EditContext _editContext = default!;
 
     [CascadingParameter]
     private HttpContext HttpContext { get; set; } = default!;
@@ -67,7 +68,7 @@
     protected override async Task OnInitializedAsync()
     {
         Input ??= new();
-        editContext = new EditContext(Input);
+        _editContext = new EditContext(Input);
 
         if (HttpMethods.IsGet(HttpContext.Request.Method))
         {
@@ -91,7 +92,7 @@
         }
         else
         {
-            errorMessage = "Invalid email or password.";
+            _errorMessage = "Invalid email or password.";
         }
     }
 
