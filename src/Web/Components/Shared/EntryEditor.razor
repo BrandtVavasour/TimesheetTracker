@@ -140,8 +140,10 @@
     private int Dur => _e is null ? 0 : Calc.DurationMinutes(_e);
     private bool Valid => Dur > 0;
 
+    // Wide enough for 12-hour locales (e.g. "12:30 pm" + the picker icon in
+    // en-AU Chrome) — 108px clipped the AM/PM.
     private const string TimeInputStyle =
-        "height:36px;width:108px;padding:0 10px;border-radius:var(--r-sm);border:1px solid var(--line-strong);background:var(--surface);color:var(--text);font-size:14px;outline:none;";
+        "height:36px;width:140px;min-width:140px;padding:0 10px;border-radius:var(--r-sm);border:1px solid var(--line-strong);background:var(--surface);color:var(--text);font-size:14px;outline:none;";
 
     private static string InputStyle(string extra) =>
         $"height:36px;width:100%;padding:0 10px;border-radius:var(--r-sm);border:1px solid var(--line-strong);background:var(--surface);color:var(--text);font-size:14px;outline:none;{extra}";

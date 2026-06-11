@@ -35,3 +35,6 @@ appsettings.*.local.json
 # OS
 .DS_Store
 Thumbs.db
+
+# Local Claude Code dev-server config
+.claude/
