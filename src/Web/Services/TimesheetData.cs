@@ -119,8 +119,8 @@ public sealed class TimesheetData(IDbContextFactory<TimesheetDbContext> dbFactor
         existing.IsArchived = job.IsArchived;
         existing.ModifiedDate = DateTime.UtcNow;
 
-        SyncCustomFields(existing, job.CustomFields);
-        SyncProjectCodes(existing, job.ProjectCodes);
+        SyncCustomFields(db, existing, job.CustomFields);
+        SyncProjectCodes(db, existing, job.ProjectCodes);
 
         await db.SaveChangesAsync();
     }
@@ -155,7 +155,13 @@ public sealed class TimesheetData(IDbContextFactory<TimesheetDbContext> dbFactor
 
     public AustralianState EffectiveState(Job job, AppUser appUser) => job.StateOverride ?? appUser.DefaultState;
 
-    private static void SyncCustomFields(Job existing, ICollection<JobCustomField> incoming)
+    // New children are added via the DbSet, not just the parent's collection:
+    // their ids are page-generated (already set), and EF's graph discovery treats
+    // a discovered entity with a set generated key as existing → Modified → an
+    // UPDATE for a row that was never inserted (DbUpdateConcurrencyException).
+    // DbSet.Add forces Added; navigation fixup attaches it to the collection.
+
+    private static void SyncCustomFields(TimesheetDbContext db, Job existing, ICollection<JobCustomField> incoming)
     {
         foreach (var stale in existing.CustomFields.Where(f => incoming.All(i => i.Id != f.Id)).ToList())
             existing.CustomFields.Remove(stale);
@@ -164,7 +170,7 @@ public sealed class TimesheetData(IDbContextFactory<TimesheetDbContext> dbFactor
             var cur = existing.CustomFields.FirstOrDefault(f => f.Id == inc.Id);
             if (cur is null)
             {
-                existing.CustomFields.Add(new()
+                db.JobCustomFields.Add(new()
                 {
                     Id = inc.Id == Guid.Empty ? Guid.NewGuid() : inc.Id,
                     JobId = existing.Id, Name = inc.Name, Value = inc.Value,
@@ -179,7 +185,7 @@ public sealed class TimesheetData(IDbContextFactory<TimesheetDbContext> dbFactor
         }
     }
 
-    private static void SyncProjectCodes(Job existing, ICollection<ProjectCode> incoming)
+    private static void SyncProjectCodes(TimesheetDbContext db, Job existing, ICollection<ProjectCode> incoming)
     {
         foreach (var stale in existing.ProjectCodes.Where(p => incoming.All(i => i.Id != p.Id)).ToList())
             existing.ProjectCodes.Remove(stale);
@@ -188,7 +194,7 @@ public sealed class TimesheetData(IDbContextFactory<TimesheetDbContext> dbFactor
             var cur = existing.ProjectCodes.FirstOrDefault(p => p.Id == inc.Id);
             if (cur is null)
             {
-                existing.ProjectCodes.Add(new()
+                db.ProjectCodes.Add(new()
                 {
                     Id = inc.Id == Guid.Empty ? Guid.NewGuid() : inc.Id,
                     JobId = existing.Id, Code = inc.Code, Description = inc.Description,
