@@ -16,7 +16,8 @@ namespace Web.Tests;
 [TestFixture]
 public class PagesRenderTests
 {
-    private static BunitContext NewSeededContext() => NewContext(db => SeedData.SeedAsync(db).GetAwaiter().GetResult());
+    private static BunitContext NewSeededContext(Action<IServiceCollection>? extraServices = null) =>
+        NewContext(db => SeedData.SeedAsync(db).GetAwaiter().GetResult(), extraServices);
 
     /// <summary>A brand-new user: their account row exists, but no jobs or entries.</summary>
     private static BunitContext NewEmptyUserContext() => NewContext(db =>
@@ -25,7 +26,7 @@ public class PagesRenderTests
         db.SaveChanges();
     });
 
-    private static BunitContext NewContext(Action<TimesheetDbContext> seed)
+    private static BunitContext NewContext(Action<TimesheetDbContext> seed, Action<IServiceCollection>? extraServices = null)
     {
         var ctx = new BunitContext();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
@@ -42,10 +43,18 @@ public class PagesRenderTests
         ctx.Services.AddScoped<ICurrentUser>(_ => new StubCurrentUser(SeedData.DemoUserId));
         ctx.Services.AddScoped<ITimesheetData, TimesheetData>();
         ctx.Services.AddScoped<IToastService, ToastService>();
+        ctx.Services.AddSingleton<IAccountInfo>(new StubAccountInfo(hasGoogle: false, hasPassword: true));
+        extraServices?.Invoke(ctx.Services);
 
         using var scope = ctx.Services.CreateScope();
         seed(scope.ServiceProvider.GetRequiredService<TimesheetDbContext>());
         return ctx;
+    }
+
+    private sealed class StubAccountInfo(bool hasGoogle, bool hasPassword) : IAccountInfo
+    {
+        public Task<AccountMethods> GetMethodsAsync() =>
+            Task.FromResult(new AccountMethods(hasGoogle, hasPassword));
     }
 
     private sealed class StubCurrentUser(Guid id) : ICurrentUser
@@ -72,7 +81,59 @@ public class PagesRenderTests
         cut.Markup.Should().Contain("40192");              // shown custom field (copyable)
         cut.Markup.Should().Contain("Week total");
         cut.Markup.Should().Contain("WFH");                // Wednesday's checkout-flow entry is work-from-home
+        cut.Markup.Should().Contain("data-copy=\"PRJ-1234\""); // project codes are click-to-copy
         cut.FindAll(".te-row").Count.Should().Be(5);       // Acme entries in the sample week
+    }
+
+    [Test]
+    public void Weekly_ExportWeekButton_TriggersDownload()
+    {
+        using var ctx = NewSeededContext();
+        var cut = ctx.Render<Weekly>();
+        cut.WaitForState(() => !cut.Markup.Contains("Loading…"), TimeSpan.FromSeconds(10));
+
+        cut.FindAll("button").Single(b => b.TextContent.Contains("Export week")).Click();
+
+        cut.WaitForState(
+            () => ctx.JSInterop.Invocations.Any(i => i.Identifier == "tsDownload"),
+            TimeSpan.FromSeconds(10));
+        var call = ctx.JSInterop.Invocations.Single(i => i.Identifier == "tsDownload");
+        call.Arguments[0]!.ToString().Should().EndWith(".xlsx");
+    }
+
+    [Test]
+    public void Profile_WithGoogleLinked_ShowsConnectedWithoutDeadButton()
+    {
+        using var ctx = NewSeededContext(s =>
+            s.AddSingleton<IAccountInfo>(new StubAccountInfo(hasGoogle: true, hasPassword: true)));
+        var cut = ctx.Render<Profile>();
+        cut.WaitForState(() => !cut.Markup.Contains("Loading…"), TimeSpan.FromSeconds(10));
+
+        cut.Markup.Should().Contain("Connected");
+        cut.FindAll("button").Should().NotContain(b => b.TextContent.Trim() == "Connect");
+    }
+
+    [Test]
+    public void Profile_WithoutGoogle_ShowsNotConnected_NoDeadButton()
+    {
+        using var ctx = NewSeededContext();
+        var cut = ctx.Render<Profile>();
+        cut.WaitForState(() => !cut.Markup.Contains("Loading…"), TimeSpan.FromSeconds(10));
+
+        cut.Markup.Should().Contain("Not connected");
+        cut.FindAll("button").Should().NotContain(b => b.TextContent.Trim() == "Connect");
+    }
+
+    [Test]
+    public void Profile_HasNoDotNetJargon_AndNoStaticPreferences()
+    {
+        using var ctx = NewSeededContext();
+        var cut = ctx.Render<Profile>();
+        cut.WaitForState(() => !cut.Markup.Contains("Loading…"), TimeSpan.FromSeconds(10));
+
+        cut.Markup.Should().NotContain("ASP.NET");
+        cut.Markup.Should().NotContain("Fixed this iteration");
+        cut.Markup.Should().NotContain("Preferences");
     }
 
     [Test]

@@ -92,29 +92,35 @@
                               style="@(InputStyle("height:auto;padding:8px 10px;resize:vertical;line-height:1.45;"))">@_e.Notes</textarea>
                 </label>
 
-                <div style="display:flex;align-items:center;gap:18px;padding:12px 14px;border-radius:var(--r-md);
-                            background:@(Valid ? "var(--accent-tint)" : "var(--danger-tint)");border:1px solid @(Valid ? "var(--accent-tintb)" : "transparent");">
-                    <div>
-                        <div style="font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:@(Valid ? "var(--accent-text)" : "var(--danger)");">Decimal hours</div>
-                        <div class="mono" style="font-size:26px;font-weight:700;line-height:1.1;color:@(Valid ? "var(--accent-text)" : "var(--danger)");">
-                            @(Valid ? HoursFormat.Decimal(Dur, Job.DecimalPlaces) : "—")
+                @if (_start is null || _end is null)
+                {
+                    <div style="padding:12px 14px;border-radius:var(--r-md);background:var(--surface-2);border:1px dashed var(--line-strong);
+                                font-size:13px;color:var(--text-soft);display:flex;align-items:center;gap:8px;">
+                        <Icon Name="info" Size="15" /> Enter start and end times to see the hours.
+                    </div>
+                }
+                else
+                {
+                    <div style="display:flex;align-items:center;gap:18px;padding:12px 14px;border-radius:var(--r-md);
+                                background:@(Valid ? "var(--accent-tint)" : "var(--danger-tint)");border:1px solid @(Valid ? "var(--accent-tintb)" : "transparent");">
+                        <div>
+                            <div style="font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:@(Valid ? "var(--accent-text)" : "var(--danger)");">Decimal hours</div>
+                            <div class="mono" style="font-size:26px;font-weight:700;line-height:1.1;color:@(Valid ? "var(--accent-text)" : "var(--danger)");">
+                                @(Valid ? HoursFormat.Decimal(Dur, Job.DecimalPlaces) : "—")
+                            </div>
+                        </div>
+                        <div style="width:1px;height:34px;background:@(Valid ? "var(--accent-tintb)" : "#0001");"></div>
+                        <div>
+                            <div style="font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-soft);">Duration</div>
+                            <div class="mono" style="font-size:26px;font-weight:700;line-height:1.1;color:@(Valid ? "var(--text)" : "var(--danger)");">
+                                @(Valid ? HoursFormat.Hmm(Dur) : "invalid")
+                            </div>
+                        </div>
+                        <div style="margin-left:auto;font-size:12px;color:var(--text-soft);max-width:150px;text-align:right;">
+                            @(Valid ? $"at {Job.DecimalPlaces} dp precision" : "End must be after start (after break).")
                         </div>
                     </div>
-                    <div style="width:1px;height:34px;background:@(Valid ? "var(--accent-tintb)" : "#0001");"></div>
-                    <div>
-                        <div style="font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-soft);">Duration</div>
-                        <div class="mono" style="font-size:26px;font-weight:700;line-height:1.1;color:@(Valid ? "var(--text)" : "var(--danger)");">
-                            @(Valid ? HoursFormat.Hmm(Dur) : "invalid")
-                        </div>
-                    </div>
-                    <div style="margin-left:auto;font-size:12px;color:var(--text-soft);max-width:150px;text-align:right;">
-                        @(Valid
-                            ? $"at {Job.DecimalPlaces} dp precision"
-                            : _start is null || _end is null
-                                ? "Enter start and end times."
-                                : "End must be after start (after break).")
-                    </div>
-                </div>
+                }
             </div>
 
             <div style="display:flex;gap:8px;justify-content:flex-end;padding:14px 20px;border-top:1px solid var(--line);background:var(--surface-2);">

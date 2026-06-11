@@ -146,6 +146,7 @@ try
     builder.Services.AddScoped<ICurrentUser, CurrentUser>();
     builder.Services.AddScoped<ITimesheetData, TimesheetData>();
     builder.Services.AddScoped<IToastService, ToastService>();
+    builder.Services.AddScoped<IAccountInfo, AccountInfo>();
     builder.Services.AddSingleton<IAssetVersion, AssetVersion>();
 
     var app = builder.Build();

@@ -51,6 +51,10 @@ public class EntryEditorTests
         var save = cut.FindAll("button").Single(b => b.TextContent.Contains("Save entry"));
         save.HasAttribute("disabled").Should().BeTrue();
         cut.Markup.Should().Contain("Enter start and end times");
+
+        // The totals box is meaningless with no times — don't render it.
+        cut.Markup.Should().NotContain("Decimal hours");
+        cut.Markup.Should().NotContain("Duration");
     }
 
     [Test]
@@ -65,6 +69,7 @@ public class EntryEditorTests
 
         var save = cut.FindAll("button").Single(b => b.TextContent.Contains("Save entry"));
         save.HasAttribute("disabled").Should().BeFalse();
+        cut.Markup.Should().Contain("Decimal hours");
         cut.Markup.Should().Contain("8.50"); // 8.5h at 2dp
     }
 

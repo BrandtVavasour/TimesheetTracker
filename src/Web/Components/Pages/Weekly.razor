@@ -1,11 +1,14 @@
 @page "/"
 @rendermode InteractiveServer
+@using TimesheetTracker.DataModel.Services.Export
 @inject ITimesheetData Data
 @inject ITimeCalculationService Calc
 @inject IHolidayService Holidays
 @inject NavigationManager Nav
 @inject IToastService Toast
 @inject ILogger<Weekly> Logger
+@inject IExportService ExportSvc
+@inject IJSRuntime Js
 
 @if (_job is null)
 {
@@ -89,6 +92,7 @@ else
                     <button class="ts-iconbtn focusable" @onclick="@(() => ChangeWeek(7))" title="Next week"
                             style="width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;border-radius:var(--r-sm);border:none;background:transparent;color:var(--text-soft);cursor:pointer;"><Icon Name="chevR" Size="17" /></button>
                 </div>
+                <Btn Variant="outline" Icon="download" OnClick="ExportWeek" Style="height:38px;">Export week</Btn>
             </div>
         </div>
 
@@ -175,7 +179,7 @@ else
                             </span>
                             <span class="mono" style="font-size:13px;color:@(e.BreakMinutes > 0 ? "var(--text-soft)" : "var(--text-mute)");">@(e.BreakMinutes > 0 ? $"{e.BreakMinutes}m" : "—")</span>
                             <span>
-                                @if (pc is not null) { <Tag>@pc.Code</Tag> } else { <span style="color:var(--text-mute);">—</span> }
+                                @if (pc is not null) { <CopyValue Value="@pc.Code" Size="sm" /> } else { <span style="color:var(--text-mute);">—</span> }
                             </span>
                             <span style="font-size:13px;color:@(valid ? "var(--text-soft)" : "var(--danger)");overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:12px;">
                                 @if (valid) { @(string.IsNullOrEmpty(e.Notes) ? "—" : e.Notes) } else { @("Invalid: end before start") }
@@ -236,7 +240,7 @@ else
                                     @if (valid) { <CopyValue Value="@HoursFormat.Decimal(dur, job.DecimalPlaces)" Size="sm" /> }
                                 </div>
                                 <div style="display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap;">
-                                    @if (pc is not null) { <Tag>@pc.Code</Tag> }
+                                    @if (pc is not null) { <CopyValue Value="@pc.Code" Size="sm" /> }
                                     @if (e.BreakMinutes > 0) { <span class="mono" style="font-size:11.5px;color:var(--text-mute);">break @(e.BreakMinutes)m</span> }
                                     <span class="mono" style="font-size:11.5px;color:var(--text-mute);margin-left:auto;">@(valid ? HoursFormat.Hmm(dur) : "invalid")</span>
                                 </div>
@@ -394,6 +398,34 @@ else
         {
             Logger.LogError(ex, "Failed to save entry {EntryId}", e.Id);
             Toast.Error("Couldn't save the entry — please try again.");
+        }
+    }
+
+    /// <summary>Download the currently viewed week for the selected job as .xlsx.</summary>
+    private async Task ExportWeek()
+    {
+        if (_job is null) return;
+        try
+        {
+            var days = CalendarFormat.WeekDates(_week);
+            var entries = await Data.EntriesAsync(_job.Id, days[0], days[6]);
+            var rows = ExportSvc.BuildRows(entries, new ExportContext(_state, _job.DecimalPlaces));
+            if (rows.Count == 0)
+            {
+                Toast.Error("Nothing to export — this week has no entries.");
+                return;
+            }
+            var bytes = await ExportSvc.ToWorkbookAsync(rows);
+            var slug = System.Text.RegularExpressions.Regex.Replace(_job.Name, "[^a-zA-Z0-9]+", "-").Trim('-');
+            var filename = $"{slug}_Week_{days[0]:yyyy-MM-dd}.xlsx";
+            await Js.InvokeVoidAsync("tsDownload", filename, Convert.ToBase64String(bytes),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            Toast.Success($"{filename} downloaded");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed weekly export for {JobId}", _job.Id);
+            Toast.Error("Couldn't generate the export — please try again.");
         }
     }
 

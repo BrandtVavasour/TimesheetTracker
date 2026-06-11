@@ -3,8 +3,9 @@
 @inject ITimesheetData Data
 @inject IToastService Toast
 @inject ILogger<Profile> Logger
+@inject IAccountInfo Account
 
-<PageHead Title="Profile" Subtitle="Your details, sign-in methods, and regional preferences." />
+<PageHead Title="Profile" Subtitle="Your details and sign-in methods." />
 
 @if (_user is null)
 {
@@ -21,7 +22,7 @@ else
                     <div style="font-size:13px;color:var(--text-soft);">@_user.Email</div>
                 </div>
             </div>
-            <div style="display:grid;grid-template-columns:1fr 220px;gap:16px;align-items:end;">
+            <div style="display:grid;grid-template-columns:1fr 220px;gap:16px;align-items:start;">
                 <Field Label="Display name">
                     <input class="input" @bind="_displayName" @bind:event="oninput" />
                 </Field>
@@ -52,24 +53,28 @@ else
                         <div style="font-size:13.5px;font-weight:600;">Google</div>
                         <div style="font-size:12px;color:var(--text-soft);">@_user.Email</div>
                     </div>
-                    <Btn Size="sm" Variant="outline">Connect</Btn>
+                    @if (_methods?.HasGoogle == true)
+                    {
+                        <Badge Tone="accent">Connected</Badge>
+                    }
+                    else
+                    {
+                        <span style="font-size:12.5px;color:var(--text-mute);">Not connected</span>
+                    }
                 </div>
                 <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:var(--r-md);border:1px solid var(--line);">
                     <span style="width:22px;height:22px;display:grid;place-items:center;color:var(--text-soft);"><Icon Name="user" Size="20" /></span>
                     <div style="flex:1;">
                         <div style="font-size:13.5px;font-weight:600;">Email &amp; password</div>
-                        <div style="font-size:12px;color:var(--text-soft);">Local ASP.NET Core Identity account</div>
+                        <div style="font-size:12px;color:var(--text-soft);">
+                            @(_methods?.HasPassword == true ? "Sign in with your email and password." : "No password set — you sign in with Google.")
+                        </div>
                     </div>
-                    <Btn Size="sm" Variant="outline" Href="Account/Manage/ChangePassword">Change password</Btn>
+                    @if (_methods?.HasPassword == true)
+                    {
+                        <Btn Size="sm" Variant="outline" Href="Account/Manage/ChangePassword">Change password</Btn>
+                    }
                 </div>
-            </div>
-        </Card>
-
-        <Card Title="Preferences" Desc="Regional conventions for an Australian timesheet.">
-            <div style="display:flex;flex-direction:column;gap:12px;">
-                @PrefRow("Week starts", "Monday", "Fixed this iteration")
-                @PrefRow("Financial year", "1 Jul – 30 Jun", "Used for yearly export")
-                @PrefRow("Time entry", "Wall-clock, no timezone conversion", null)
             </div>
         </Card>
     </div>
@@ -77,6 +82,7 @@ else
 
 @code {
     private AppUser? _user;
+    private AccountMethods? _methods;
     private string _displayName = "";
     private AustralianState _defaultState;
 
@@ -86,6 +92,7 @@ else
     protected override async Task OnInitializedAsync()
     {
         _user = await Data.CurrentUserAsync();
+        _methods = await Account.GetMethodsAsync();
         _displayName = _user.DisplayName;
         _defaultState = _user.DefaultState;
     }
@@ -105,14 +112,4 @@ else
         }
     }
 
-    private RenderFragment PrefRow(string label, string value, string? note) => __builder =>
-    {
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-radius:var(--r-md);background:var(--surface-2);border:1px solid var(--line);">
-            <span style="font-size:13px;font-weight:600;color:var(--text-soft);">@label</span>
-            <span style="display:flex;align-items:center;gap:10px;">
-                <span style="font-size:13.5px;font-weight:600;">@value</span>
-                @if (note is not null) { <Badge Tone="neutral">@note</Badge> }
-            </span>
-        </div>
-    };
 }
