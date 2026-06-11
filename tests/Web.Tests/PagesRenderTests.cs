@@ -21,7 +21,11 @@ public class PagesRenderTests
         var ctx = new BunitContext();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
         var dbName = "pages-" + Guid.NewGuid();
-        ctx.Services.AddDbContext<TimesheetDbContext>(o => o.UseInMemoryDatabase(dbName));
+        // Mirror production: data layer pulls contexts from the factory; a scoped
+        // context (from the factory) covers anything resolving TimesheetDbContext.
+        ctx.Services.AddDbContextFactory<TimesheetDbContext>(o => o.UseInMemoryDatabase(dbName));
+        ctx.Services.AddScoped<TimesheetDbContext>(sp =>
+            sp.GetRequiredService<IDbContextFactory<TimesheetDbContext>>().CreateDbContext());
         ctx.Services.AddScoped<ITimeCalculationService, TimeCalculationService>();
         ctx.Services.AddScoped<IHolidayService, HolidayService>();
         ctx.Services.AddScoped<IExportService, ExportService>();

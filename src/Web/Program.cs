@@ -173,6 +173,13 @@ try
             suffix: ctx => ctx.User.Identity?.Name,
             shouldExecute: ctx =>
             {
+                // The per-user suffix requires an authenticated user, so only run
+                // Delta for signed-in requests. Anonymous ones (favicon, static
+                // assets, pre-login redirects) have no per-user cache to key and
+                // would otherwise throw "suffix callback ... user is not authenticated".
+                if (ctx.User.Identity?.IsAuthenticated != true)
+                    return false;
+
                 var path = ctx.Request.Path.Value ?? "";
                 return !path.StartsWith("/_blazor", StringComparison.OrdinalIgnoreCase)
                     && !path.StartsWith("/Account", StringComparison.OrdinalIgnoreCase)
