@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="app.css" />
+    <link rel="stylesheet" href="@Versioned("app.css")" />
     <link rel="icon" type="image/svg+xml" href="favicon.svg" />
     <HeadOutlet />
 </head>
@@ -19,7 +19,7 @@
         <a href="" class="reload">Reload</a>
         <span class="dismiss">🗙</span>
     </div>
-    <script src="ts.js" nonce="@Nonce"></script>
+    <script src="@Versioned("ts.js")" nonce="@Nonce"></script>
     <script src="_framework/blazor.web.js" nonce="@Nonce"></script>
 </body>
 </html>
@@ -27,5 +27,11 @@
 @code {
     [CascadingParameter] private HttpContext? HttpContext { get; set; }
 
+    [Inject] private IAssetVersion Assets { get; set; } = default!;
+
     private string Nonce => HttpContext?.GetNonce() ?? "";
+
+    // Content-hash cache buster: browsers cached ts.js/app.css and kept running
+    // stale copies after deploys (e.g. the clipboard fix never reached them).
+    private string Versioned(string asset) => $"{asset}?v={Assets.For(asset)}";
 }

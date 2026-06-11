@@ -146,6 +146,7 @@ try
     builder.Services.AddScoped<ICurrentUser, CurrentUser>();
     builder.Services.AddScoped<ITimesheetData, TimesheetData>();
     builder.Services.AddScoped<IToastService, ToastService>();
+    builder.Services.AddSingleton<IAssetVersion, AssetVersion>();
 
     var app = builder.Build();
 
@@ -159,7 +160,14 @@ try
     }
 
     app.UseSecurityHeaders();
-    app.UseStaticFiles();
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        // App.razor stamps ?v=<content-hash> on ts.js/app.css, so cached copies
+        // are busted on deploy and a long max-age is safe. Without an explicit
+        // Cache-Control, browsers heuristically cached stale assets after deploys.
+        OnPrepareResponse = ctx =>
+            ctx.Context.Response.Headers.CacheControl = "public,max-age=604800",
+    });
     app.UseAuthentication();
     app.UseAuthorization();
 
