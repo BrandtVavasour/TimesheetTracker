@@ -65,7 +65,7 @@ public static class SeedData
         acme.TimeEntries =
         [
             Entry(new(2026, 6, 9), "09:00", "17:30", false, 30, "Sprint planning + feature dev", prj1234),
-            Entry(new(2026, 6, 10), "08:30", "16:00", false, 30, "Checkout flow build", prj1234),
+            Entry(new(2026, 6, 10), "08:30", "16:00", false, 30, "Checkout flow build", prj1234, wfh: true),
             Entry(new(2026, 6, 10), "19:00", "21:00", false, 0, "On-call: prod deploy", intOps),
             Entry(new(2026, 6, 11), "09:00", "17:00", false, 45, "Data migration dry-run", prj2087),
             Entry(new(2026, 6, 12), "22:00", "02:30", true, 30, "Overnight cutover window", intOps),
@@ -110,7 +110,7 @@ public static class SeedData
         return [acme, cafe, studio, oldgig];
     }
 
-    private static TimeEntry Entry(DateOnly date, string start, string end, bool endsNextDay, int breakMin, string notes, ProjectCode? code) =>
+    private static TimeEntry Entry(DateOnly date, string start, string end, bool endsNextDay, int breakMin, string notes, ProjectCode? code, bool wfh = false) =>
         new()
         {
             Id = Guid.NewGuid(),
@@ -119,6 +119,7 @@ public static class SeedData
             EndTime = TimeOnly.Parse(end),
             EndsNextDay = endsNextDay,
             BreakMinutes = breakMin,
+            IsWorkFromHome = wfh,
             Notes = notes,
             ProjectCode = code,
             ProjectCodeId = code?.Id

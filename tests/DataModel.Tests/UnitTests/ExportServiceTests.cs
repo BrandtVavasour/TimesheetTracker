@@ -64,6 +64,30 @@ public class ExportServiceTests
     }
 
     [Test]
+    public void BuildRows_MarksWorkFromHome()
+    {
+        var service = new ExportService(new TimeCalculationService(), new HolidayService());
+        var entries = new[]
+        {
+            new TimeEntry
+            {
+                WorkDate = new(2026, 6, 10), StartTime = new(9, 0), EndTime = new(17, 0),
+                BreakMinutes = 30, IsWorkFromHome = true,
+            },
+            new TimeEntry
+            {
+                WorkDate = new(2026, 6, 11), StartTime = new(9, 0), EndTime = new(17, 0),
+                BreakMinutes = 30,
+            },
+        };
+
+        var rows = service.BuildRows(entries, new(AustralianState.NSW, 2));
+
+        rows[0].WorkFromHome.Should().Be("Yes");
+        rows[1].WorkFromHome.Should().BeNull();
+    }
+
+    [Test]
     public async Task ToWorkbookAsync_ProducesNonEmptyXlsx()
     {
         var service = new ExportService(new TimeCalculationService(), new HolidayService());

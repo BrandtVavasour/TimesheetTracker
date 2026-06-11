@@ -28,9 +28,12 @@ public class TimesheetRow
     [Column(Order = 8)]
     public string? ProjectCode { get; set; }
 
-    [Column(Order = 9)]
-    public string? PublicHoliday { get; set; }
+    [Column(Heading = "WFH", Order = 9)]
+    public string? WorkFromHome { get; set; }
 
     [Column(Order = 10)]
+    public string? PublicHoliday { get; set; }
+
+    [Column(Order = 11)]
     public string? Notes { get; set; }
 }

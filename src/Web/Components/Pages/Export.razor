@@ -110,7 +110,7 @@ else
                     <table style="width:100%;border-collapse:collapse;font-size:13px;">
                         <thead>
                             <tr>
-                                @{ var heads = new[] { "Date", "Day", "Start", "End", "Break", "Decimal", "h:mm", "Project", "Notes", "Holiday" }; }
+                                @{ var heads = new[] { "Date", "Day", "Start", "End", "Break", "Decimal", "h:mm", "Project", "WFH", "Notes", "Holiday" }; }
                                 @for (var i = 0; i < heads.Length; i++)
                                 {
                                     <th style="text-align:@(i is >= 2 and <= 6 ? "right" : "left");padding:10px 14px;font-size:10.5px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:var(--text-mute);border-bottom:1px solid var(--line);white-space:nowrap;">@heads[i]</th>
@@ -130,6 +130,7 @@ else
                                     <td class="mono" style="@Td("right")font-weight:700;color:var(--accent-text);">@r.DecimalHours.ToString("F" + _job.DecimalPlaces)</td>
                                     <td class="mono" style="@Td("right")color:var(--text-soft);">@r.HoursMinutes</td>
                                     <td style="@Td()">@if (!string.IsNullOrEmpty(r.ProjectCode)) { <Tag>@r.ProjectCode</Tag> } else { <span style="color:var(--text-mute);">—</span> }</td>
+                                    <td style="@Td()">@if (r.WorkFromHome is not null) { <span style="font-size:10px;font-weight:700;color:var(--accent-text);background:var(--accent-tint);border:1px solid var(--accent-tintb);border-radius:4px;padding:0 4px;">WFH</span> } else { <span style="color:var(--text-mute);">—</span> }</td>
                                     <td style="@Td()max-width:220px;color:var(--text-soft);">@(string.IsNullOrEmpty(r.Notes) ? "—" : r.Notes)</td>
                                     <td style="@Td()color:var(--holiday);font-size:12px;">@r.PublicHoliday</td>
                                 </tr>
@@ -140,7 +141,7 @@ else
                                 <td colspan="5" style="padding:12px 14px;font-weight:700;font-size:12px;letter-spacing:0.04em;text-transform:uppercase;">Period total</td>
                                 <td class="mono" style="padding:12px 14px;text-align:right;font-weight:700;font-size:15px;">@HoursFormat.Decimal(_totalMin, _job.DecimalPlaces)</td>
                                 <td class="mono" style="padding:12px 14px;text-align:right;font-weight:700;">@HoursFormat.Hmm(_totalMin)</td>
-                                <td colspan="3"></td>
+                                <td colspan="4"></td>
                             </tr>
                         </tfoot>
                     </table>

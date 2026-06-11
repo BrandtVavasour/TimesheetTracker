@@ -37,6 +37,10 @@
                         <input type="checkbox" checked="@_e.EndsNextDay" @onchange="@(e => _e.EndsNextDay = (bool)e.Value!)" />
                         <span style="font-size:13px;font-weight:600;color:@(_e.EndsNextDay ? "var(--accent-text)" : "var(--text-soft)");">Ends next day</span>
                     </label>
+                    <label style="display:flex;align-items:center;gap:8px;padding-bottom:9px;cursor:pointer;">
+                        <input type="checkbox" data-testid="wfh" checked="@_e.IsWorkFromHome" @onchange="@(e => _e.IsWorkFromHome = (bool)e.Value!)" />
+                        <span style="font-size:13px;font-weight:600;color:@(_e.IsWorkFromHome ? "var(--accent-text)" : "var(--text-soft)");">Worked from home</span>
+                    </label>
                 </div>
 
                 @if (SuggestsNextDay() && _e.EndsNextDay)
@@ -175,7 +179,8 @@
     private static TimeEntry Clone(TimeEntry s) => new()
     {
         Id = s.Id, JobId = s.JobId, WorkDate = s.WorkDate, StartTime = s.StartTime, EndTime = s.EndTime,
-        EndsNextDay = s.EndsNextDay, BreakMinutes = s.BreakMinutes, Notes = s.Notes, ProjectCodeId = s.ProjectCodeId
+        EndsNextDay = s.EndsNextDay, BreakMinutes = s.BreakMinutes, IsWorkFromHome = s.IsWorkFromHome,
+        Notes = s.Notes, ProjectCodeId = s.ProjectCodeId
     };
 
     private async Task OnClose() => await OnCloseEditor.InvokeAsync();

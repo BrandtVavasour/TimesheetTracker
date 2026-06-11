@@ -71,6 +71,7 @@ public class PagesRenderTests
         cut.Markup.Should().Contain("+1d");                // crosses-midnight badge
         cut.Markup.Should().Contain("40192");              // shown custom field (copyable)
         cut.Markup.Should().Contain("Week total");
+        cut.Markup.Should().Contain("WFH");                // Wednesday's checkout-flow entry is work-from-home
         cut.FindAll(".te-row").Count.Should().Be(5);       // Acme entries in the sample week
     }
 

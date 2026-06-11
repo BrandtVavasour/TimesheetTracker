@@ -17,6 +17,9 @@ public class TimeEntry : BaseEntity
 
     public int BreakMinutes { get; set; }
 
+    /// <summary>True when the entry was worked from home.</summary>
+    public bool IsWorkFromHome { get; set; }
+
     [MaxLength(2000)]
     public string? Notes { get; set; }
 

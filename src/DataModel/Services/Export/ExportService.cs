@@ -20,6 +20,7 @@ public class ExportService(ITimeCalculationService calc, IHolidayService holiday
                 DecimalHours = calc.DecimalHours(e, context.DecimalPlaces),
                 HoursMinutes = calc.HoursMinutes(e),
                 ProjectCode = e.ProjectCode?.Code,
+                WorkFromHome = e.IsWorkFromHome ? "Yes" : null,
                 PublicHoliday = isHoliday ? holidayName : null,
                 Notes = e.Notes
             });

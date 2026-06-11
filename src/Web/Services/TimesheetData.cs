@@ -87,6 +87,7 @@ public sealed class TimesheetData(IDbContextFactory<TimesheetDbContext> dbFactor
             existing.EndTime = entry.EndTime;
             existing.EndsNextDay = entry.EndsNextDay;
             existing.BreakMinutes = entry.BreakMinutes;
+            existing.IsWorkFromHome = entry.IsWorkFromHome;
             existing.Notes = entry.Notes;
             existing.ProjectCodeId = entry.ProjectCodeId;
             existing.ModifiedDate = DateTime.UtcNow;

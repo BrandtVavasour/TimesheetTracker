@@ -69,6 +69,52 @@ public class EntryEditorTests
     }
 
     [Test]
+    public void WorkFromHome_TogglesOntoTheDraft()
+    {
+        using var ctx = NewCtx();
+        var job = NewJob();
+        TimeEntry? savedEntry = null;
+
+        var cut = ctx.Render<EntryEditor>(p => p
+            .Add(x => x.Open, true)
+            .Add(x => x.IsNew, true)
+            .Add(x => x.Job, job)
+            .Add(x => x.Draft, NewDraft(job))
+            .Add(x => x.InitialStart, new TimeOnly(9, 0))
+            .Add(x => x.InitialEnd, new TimeOnly(17, 0))
+            .Add(x => x.OnSaveEntry, e => savedEntry = e));
+
+        // Off by default; toggle it on, save, and the flag rides the entry.
+        var wfh = cut.Find("input[data-testid=wfh]");
+        wfh.HasAttribute("checked").Should().BeFalse();
+        wfh.Change(true);
+
+        cut.FindAll("button").Single(b => b.TextContent.Contains("Save entry")).Click();
+        cut.WaitForState(() => savedEntry is not null, TimeSpan.FromSeconds(5));
+
+        savedEntry!.IsWorkFromHome.Should().BeTrue();
+    }
+
+    [Test]
+    public void EditExistingEntry_ShowsWfhChecked()
+    {
+        using var ctx = NewCtx();
+        var job = NewJob();
+        var draft = NewDraft(job);
+        draft.StartTime = new(9, 0);
+        draft.EndTime = new(17, 0);
+        draft.IsWorkFromHome = true;
+
+        var cut = ctx.Render<EntryEditor>(p => p
+            .Add(x => x.Open, true)
+            .Add(x => x.IsNew, false)
+            .Add(x => x.Job, job)
+            .Add(x => x.Draft, draft));
+
+        cut.Find("input[data-testid=wfh]").HasAttribute("checked").Should().BeTrue();
+    }
+
+    [Test]
     public void EditExistingEntry_ShowsItsTimes()
     {
         using var ctx = NewCtx();

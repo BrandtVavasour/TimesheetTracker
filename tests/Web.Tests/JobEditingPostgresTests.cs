@@ -126,6 +126,34 @@ public abstract class JobEditingFlowTests
     }
 
     [Test]
+    public async Task SaveEntry_PersistsWorkFromHomeFlag()
+    {
+        var data = await NewUserDataAsync();
+        var job = await data.AddJobAsync();
+
+        var entry = new TimeEntry
+        {
+            Id = Guid.NewGuid(),
+            WorkDate = new(2026, 6, 11),
+            StartTime = new(9, 0),
+            EndTime = new(17, 0),
+            BreakMinutes = 30,
+            IsWorkFromHome = true,
+        };
+        await data.SaveEntryAsync(job.Id, entry);
+
+        var saved = (await data.EntriesAsync(job.Id, new(2026, 6, 11), new(2026, 6, 11))).Single();
+        saved.IsWorkFromHome.Should().BeTrue();
+
+        // Toggling it off on an existing entry persists too.
+        saved.IsWorkFromHome = false;
+        await data.SaveEntryAsync(job.Id, saved);
+
+        var updated = (await data.EntriesAsync(job.Id, new(2026, 6, 11), new(2026, 6, 11))).Single();
+        updated.IsWorkFromHome.Should().BeFalse();
+    }
+
+    [Test]
     public async Task Save_RemovingField_DeletesIt()
     {
         var data = await NewUserDataAsync();
