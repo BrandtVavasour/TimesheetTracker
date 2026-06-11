@@ -1,6 +1,4 @@
-@inject IJSRuntime Js
-
-<button @onclick="Copy" title="@($"Copy {Name}: {Value}")" class="copyfield focusable"
+<button @onclick="Copy" title="@($"Copy {Name}: {Value}")" data-copy="@Value" class="copyfield focusable"
         style="display:inline-flex;flex-direction:column;line-height:1.2;padding:5px 11px;cursor:pointer;text-align:left;border-radius:var(--r-sm);
                background:@(_done ? "var(--accent-tint)" : "var(--surface)");border:1px solid @(_done ? "var(--accent)" : "var(--line)");transition:background .14s, border-color .14s;">
     <span style="font-size:10.5px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text-mute);display:flex;align-items:center;gap:4px;">
@@ -18,9 +16,10 @@
 
     private bool _done;
 
+    // The clipboard write happens in ts.js via the native [data-copy] click
+    // listener (inside the user gesture) — this handler only drives the flash.
     private async Task Copy()
     {
-        await Js.InvokeVoidAsync("tsCopy", Value);
         _done = true;
         StateHasChanged();
         await Task.Delay(1100);

@@ -12,7 +12,16 @@ window.tsDownload = (filename, base64, mime) => {
   URL.revokeObjectURL(url);
 };
 
-// Clipboard interop for copy-to-paste affordances.
+// Copy-to-clipboard for [data-copy] buttons. This runs as a native capture-
+// phase listener so the clipboard write happens synchronously INSIDE the
+// browser's user gesture — routing it through Blazor JS interop runs after
+// the gesture expires and clipboard APIs reject the write (silently).
+document.addEventListener("click", (e) => {
+  const el = e.target.closest?.("[data-copy]");
+  if (el) window.tsCopy(el.getAttribute("data-copy"));
+}, true);
+
+// Clipboard write with non-secure-context fallback.
 window.tsCopy = (text) => {
   if (navigator.clipboard && navigator.clipboard.writeText) {
     return navigator.clipboard.writeText(String(text)).then(() => true).catch(() => false);
