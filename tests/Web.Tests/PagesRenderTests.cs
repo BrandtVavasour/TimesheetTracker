@@ -16,7 +16,16 @@ namespace Web.Tests;
 [TestFixture]
 public class PagesRenderTests
 {
-    private static BunitContext NewSeededContext()
+    private static BunitContext NewSeededContext() => NewContext(db => SeedData.SeedAsync(db).GetAwaiter().GetResult());
+
+    /// <summary>A brand-new user: their account row exists, but no jobs or entries.</summary>
+    private static BunitContext NewEmptyUserContext() => NewContext(db =>
+    {
+        db.Users.Add(SeedData.BuildUser());
+        db.SaveChanges();
+    });
+
+    private static BunitContext NewContext(Action<TimesheetDbContext> seed)
     {
         var ctx = new BunitContext();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
@@ -34,8 +43,7 @@ public class PagesRenderTests
         ctx.Services.AddScoped<ITimesheetData, TimesheetData>();
 
         using var scope = ctx.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<TimesheetDbContext>();
-        SeedData.SeedAsync(db).GetAwaiter().GetResult();
+        seed(scope.ServiceProvider.GetRequiredService<TimesheetDbContext>());
         return ctx;
     }
 
@@ -113,5 +121,54 @@ public class PagesRenderTests
         cut.Markup.Should().Contain("Alex Carter");
         cut.Markup.Should().Contain("Sign-in methods");
         cut.Markup.Should().Contain("Default holiday state");
+    }
+
+    // ---- New user with no jobs: every job-backed screen must resolve to an
+    // empty state, never hang on "Loading…". Regression guard for the bug where
+    // "_job is null" doubled as the loading sentinel (Jobs/Calendar/Export).
+
+    [Test]
+    public void Weekly_WithNoJobs_ShowsEmptyState()
+    {
+        using var ctx = NewEmptyUserContext();
+        var cut = ctx.Render<Weekly>();
+        cut.WaitForState(() => !cut.Markup.Contains("Loading…"), TimeSpan.FromSeconds(10));
+
+        cut.Markup.Should().Contain("No jobs yet");
+        cut.Markup.Should().NotContain("Loading…");
+    }
+
+    [Test]
+    public void Jobs_WithNoJobs_ShowsCreateFirstJob()
+    {
+        using var ctx = NewEmptyUserContext();
+        var cut = ctx.Render<Jobs>();
+        cut.WaitForState(() => !cut.Markup.Contains("Loading…"), TimeSpan.FromSeconds(10));
+
+        cut.Markup.Should().Contain("No jobs yet");
+        cut.Markup.Should().Contain("Create your first job");
+        cut.Markup.Should().NotContain("Loading…");
+    }
+
+    [Test]
+    public void Calendar_WithNoJobs_ShowsEmptyState()
+    {
+        using var ctx = NewEmptyUserContext();
+        var cut = ctx.Render<Calendar>();
+        cut.WaitForState(() => !cut.Markup.Contains("Loading…"), TimeSpan.FromSeconds(10));
+
+        cut.Markup.Should().Contain("No jobs yet");
+        cut.Markup.Should().NotContain("Loading…");
+    }
+
+    [Test]
+    public void Export_WithNoJobs_ShowsEmptyState()
+    {
+        using var ctx = NewEmptyUserContext();
+        var cut = ctx.Render<Export>();
+        cut.WaitForState(() => !cut.Markup.Contains("Loading…"), TimeSpan.FromSeconds(10));
+
+        cut.Markup.Should().Contain("No jobs yet");
+        cut.Markup.Should().NotContain("Loading…");
     }
 }

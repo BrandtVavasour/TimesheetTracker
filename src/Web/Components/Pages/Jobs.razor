@@ -4,9 +4,17 @@
 
 <PageHead Title="Jobs" Subtitle="Settings, custom fields, and project codes — per job." />
 
-@if (_job is null)
+@if (!_loaded)
 {
     <div style="margin-top:22px;color:var(--text-mute);">Loading…</div>
+}
+else if (_all.Count == 0)
+{
+    <div style="max-width:520px;padding:22px 0 40px;">
+        <Card Title="No jobs yet" Desc="Create your first job to start tracking time against it.">
+            <Btn Variant="primary" Icon="plus" OnClick="AddJob">Create your first job</Btn>
+        </Card>
+    </div>
 }
 else
 {
@@ -30,7 +38,9 @@ else
             <Btn Variant="primary" Icon="@(_saved ? "check" : "copy")" Size="sm" Style="margin-top:4px;justify-content:flex-start;" OnClick="Save">@(_saved ? "Saved" : "Save changes")</Btn>
         </div>
 
-        <!-- form -->
+        <!-- form (a job is always selected when the list is non-empty) -->
+        @if (_job is not null)
+        {
         <div style="display:flex;flex-direction:column;gap:16px;min-width:0;">
             <Card Title="General" Desc="Name, holiday state, output precision, and scheduled work days.">
                 <div style="display:flex;flex-direction:column;gap:18px;">
@@ -157,6 +167,7 @@ else
                 </div>
             </Card>
         </div>
+        }
     </div>
 }
 
@@ -165,12 +176,14 @@ else
     private Job? _job;             // editable working copy
     private AppUser _user = null!;
     private bool _saved;
+    private bool _loaded;
 
     protected override async Task OnInitializedAsync()
     {
         _user = await Data.CurrentUserAsync();
         await ReloadListAsync();
         if (_all.Count > 0) await SelectAsync(_all[0].Id);
+        _loaded = true;
     }
 
     private async Task ReloadListAsync() => _all = (await Data.AllJobsAsync()).ToList();

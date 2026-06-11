@@ -10,7 +10,21 @@
 
 @if (_job is null)
 {
-    <div style="margin-top:22px;color:var(--text-mute);">Loading…</div>
+    @if (!_loaded)
+    {
+        <div style="margin-top:22px;color:var(--text-mute);">Loading…</div>
+    }
+    else
+    {
+        <div style="margin-top:22px;display:flex;flex-direction:column;align-items:center;gap:14px;padding:48px 24px;border-radius:var(--r-lg);background:var(--surface);border:1px dashed var(--line-strong);text-align:center;">
+            <span style="width:48px;height:48px;border-radius:12px;background:var(--accent-tint);color:var(--accent);display:grid;place-items:center;"><Icon Name="briefcase" Size="24" /></span>
+            <div>
+                <div style="font-size:16px;font-weight:700;">No jobs yet</div>
+                <div style="font-size:13.5px;color:var(--text-soft);margin-top:2px;">Create a job and log some hours, then export them here.</div>
+            </div>
+            <Btn Variant="primary" Icon="plus" Href="jobs">Create a job</Btn>
+        </div>
+    }
 }
 else
 {
@@ -145,6 +159,7 @@ else
     private IReadOnlyList<TimesheetRow> _rows = [];
     private int _totalMin;
     private bool _done;
+    private bool _loaded;
 
     protected override async Task OnInitializedAsync()
     {
@@ -152,6 +167,7 @@ else
         _user = await Data.CurrentUserAsync();
         _jobs = await Data.ActiveJobsAsync();
         if (_jobs.Count > 0) { _jobId = _jobs[0].Id; await LoadAsync(); }
+        _loaded = true;
     }
 
     private async Task LoadAsync()
