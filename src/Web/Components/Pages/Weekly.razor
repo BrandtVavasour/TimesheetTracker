@@ -29,21 +29,6 @@ else
 {
     <div style="display:flex;flex-direction:column;gap:18px;padding-bottom:40px;">
 
-        @if (_showNote)
-        {
-            <div style="display:flex;gap:12px;align-items:flex-start;padding:13px 15px;border-radius:var(--r-md);background:var(--accent-tint);border:1px solid var(--accent-tintb);">
-                <span style="color:var(--accent);margin-top:1px;"><Icon Name="info" Size="18" /></span>
-                <div style="font-size:13px;color:var(--accent-text);line-height:1.5;flex:1;">
-                    <strong>Sample week, fully interactive.</strong> Mon 8 Jun is the <strong>King's Birthday</strong> public holiday (flagged, never blocked);
-                    Fri runs an <strong>overnight cutover</strong> crossing midnight; Wed has two entries. Click any row to edit, copy any decimal, or switch jobs.
-                </div>
-                <button class="ts-iconbtn focusable" @onclick="@(() => _showNote = false)" title="Dismiss"
-                        style="width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;border-radius:var(--r-sm);border:none;background:transparent;color:var(--text-soft);cursor:pointer;">
-                    <Icon Name="x" Size="15" />
-                </button>
-            </div>
-        }
-
         @{ var job = _job; var state = _state; var days = CalendarFormat.WeekDates(_week); }
 
         <!-- header: job selector + custom fields + week nav -->
@@ -299,7 +284,6 @@ else
     private Dictionary<DateOnly, List<TimeEntry>> _entriesByDay = new();
 
     private bool _jobMenu;
-    private bool _showNote = true;
     private bool _loaded;
 
     private bool _editorOpen;
