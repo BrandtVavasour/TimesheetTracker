@@ -145,6 +145,7 @@ try
     builder.Services.AddSingleton<IClock, SystemClock>();
     builder.Services.AddScoped<ICurrentUser, CurrentUser>();
     builder.Services.AddScoped<ITimesheetData, TimesheetData>();
+    builder.Services.AddScoped<IToastService, ToastService>();
 
     var app = builder.Build();
 

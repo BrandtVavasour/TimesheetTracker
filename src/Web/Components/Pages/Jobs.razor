@@ -1,6 +1,8 @@
 @page "/jobs"
 @rendermode InteractiveServer
 @inject ITimesheetData Data
+@inject IToastService Toast
+@inject ILogger<Jobs> Logger
 
 <PageHead Title="Jobs" Subtitle="Settings, custom fields, and project codes — per job." />
 
@@ -35,7 +37,7 @@ else
                 }
             }
             <Btn Variant="outline" Icon="plus" Size="sm" Style="margin-top:8px;justify-content:flex-start;" OnClick="AddJob">New job</Btn>
-            <Btn Variant="primary" Icon="@(_saved ? "check" : "copy")" Size="sm" Style="margin-top:4px;justify-content:flex-start;" OnClick="Save">@(_saved ? "Saved" : "Save changes")</Btn>
+            <Btn Variant="primary" Icon="check" Size="sm" Style="margin-top:4px;justify-content:flex-start;" OnClick="Save">Save changes</Btn>
         </div>
 
         <!-- form (a job is always selected when the list is non-empty) -->
@@ -85,6 +87,21 @@ else
                             </div>
                         </Field>
                     </div>
+                    <Field Label="Default hours" Hint="Prefilled into new entries. Leave blank for no default.">
+                        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                            <input type="time" class="mono focusable input" style="width:140px;min-width:140px;"
+                                   value="@(_job.DefaultStartTime?.ToString("HH:mm") ?? "")"
+                                   @onchange="@(e => _job.DefaultStartTime = ParseTime(e.Value))" />
+                            <span style="color:var(--text-mute);"><Icon Name="arrowR" Size="15" /></span>
+                            <input type="time" class="mono focusable input" style="width:140px;min-width:140px;"
+                                   value="@(_job.DefaultEndTime?.ToString("HH:mm") ?? "")"
+                                   @onchange="@(e => _job.DefaultEndTime = ParseTime(e.Value))" />
+                            @if (_job.DefaultStartTime is not null || _job.DefaultEndTime is not null)
+                            {
+                                <Btn Size="sm" Variant="ghost" Icon="x" OnClick="@(() => { _job.DefaultStartTime = null; _job.DefaultEndTime = null; })">Clear</Btn>
+                            }
+                        </div>
+                    </Field>
                 </div>
             </Card>
 
@@ -175,7 +192,6 @@ else
     private List<Job> _all = [];
     private Job? _job;             // editable working copy
     private AppUser _user = null!;
-    private bool _saved;
     private bool _loaded;
 
     protected override async Task OnInitializedAsync()
@@ -193,13 +209,16 @@ else
         var src = await Data.JobAsync(id);
         if (src is null) return;
         _job = Clone(src);
-        _saved = false;
     }
+
+    private static TimeOnly? ParseTime(object? value) =>
+        TimeOnly.TryParse(value?.ToString(), out var t) ? t : null;
 
     private static Job Clone(Job s) => new()
     {
         Id = s.Id, UserId = s.UserId, Name = s.Name, StateOverride = s.StateOverride,
         DecimalPlaces = s.DecimalPlaces, WorkDays = s.WorkDays, IsArchived = s.IsArchived, DisplayOrder = s.DisplayOrder,
+        DefaultStartTime = s.DefaultStartTime, DefaultEndTime = s.DefaultEndTime,
         CustomFields = s.CustomFields.Select(f => new JobCustomField
         {
             Id = f.Id, JobId = f.JobId, Name = f.Name, Value = f.Value, ShowOnTimesheet = f.ShowOnTimesheet, DisplayOrder = f.DisplayOrder
@@ -237,17 +256,34 @@ else
 
     private async Task AddJob()
     {
-        var job = await Data.AddJobAsync();
-        await ReloadListAsync();
-        await SelectAsync(job.Id);
+        try
+        {
+            var job = await Data.AddJobAsync();
+            await ReloadListAsync();
+            await SelectAsync(job.Id);
+            Toast.Success("Job created");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to create job");
+            Toast.Error("Couldn't create the job — please try again.");
+        }
     }
 
     private async Task Save()
     {
         if (_job is null) return;
-        await Data.SaveJobAsync(_job);
-        await ReloadListAsync();
-        _saved = true;
+        try
+        {
+            await Data.SaveJobAsync(_job);
+            await ReloadListAsync();
+            Toast.Success($"{_job.Name} saved");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to save job {JobId}", _job.Id);
+            Toast.Error("Couldn't save the job — please try again.");
+        }
     }
 
     private RenderFragment JobPill(Job j, bool muted) => __builder =>

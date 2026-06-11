@@ -1,6 +1,8 @@
 @page "/profile"
 @rendermode InteractiveServer
 @inject ITimesheetData Data
+@inject IToastService Toast
+@inject ILogger<Profile> Logger
 
 <PageHead Title="Profile" Subtitle="Your details, sign-in methods, and regional preferences." />
 
@@ -33,7 +35,7 @@ else
                 </Field>
             </div>
             <div style="display:flex;justify-content:flex-end;margin-top:16px;">
-                <Btn Variant="primary" Icon="@(_saved ? "check" : "copy")" OnClick="Save">@(_saved ? "Saved" : "Save profile")</Btn>
+                <Btn Variant="primary" Icon="check" OnClick="Save">Save profile</Btn>
             </div>
         </Card>
 
@@ -77,7 +79,6 @@ else
     private AppUser? _user;
     private string _displayName = "";
     private AustralianState _defaultState;
-    private bool _saved;
 
     private string Initials => _user is null ? "" : string.Concat(
         _user.DisplayName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(s => s[0]));
@@ -91,9 +92,17 @@ else
 
     private async Task Save()
     {
-        await Data.UpdateUserAsync(_displayName, _defaultState);
-        _user = await Data.CurrentUserAsync();
-        _saved = true;
+        try
+        {
+            await Data.UpdateUserAsync(_displayName, _defaultState);
+            _user = await Data.CurrentUserAsync();
+            Toast.Success("Profile updated");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to update profile");
+            Toast.Error("Couldn't update your profile — please try again.");
+        }
     }
 
     private RenderFragment PrefRow(string label, string value, string? note) => __builder =>

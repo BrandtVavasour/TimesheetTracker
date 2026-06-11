@@ -129,6 +129,8 @@ textarea:focus-visible,
 @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 @keyframes popIn { from { opacity: 0; transform: translateY(6px) scale(0.98); } to { opacity: 1; transform: none; } }
 @keyframes flashCopied { 0% { transform: scale(1);} 35% { transform: scale(1.12);} 100% { transform: scale(1);} }
+@keyframes tsSpin { to { transform: rotate(360deg); } }
+.ts-spin { animation: tsSpin .6s linear infinite; display: inline-block; }
 
 /* form inputs */
 .input { height:36px; width:100%; padding:0 10px; border-radius:var(--r-sm); border:1px solid var(--line-strong);

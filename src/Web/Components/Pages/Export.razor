@@ -4,6 +4,8 @@
 @inject ITimeCalculationService Calc
 @inject IExportService ExportSvc
 @inject IJSRuntime Js
+@inject IToastService Toast
+@inject ILogger<Export> Logger
 @using TimesheetTracker.DataModel.Services.Export
 
 <PageHead Title="Export" Subtitle="Download a week, month, or financial year as a worksheet." />
@@ -66,7 +68,7 @@ else
                     <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:var(--text-soft);">Total</span><span class="mono" style="font-weight:600;">@HoursFormat.Hmm(_totalMin)</span></div>
                     <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;"><span style="color:var(--text-soft);">Decimal</span><CopyValue Value="@HoursFormat.Decimal(_totalMin, _job.DecimalPlaces)" Size="sm" Tone="accent" /></div>
                 </div>
-                <Btn Variant="primary" Size="lg" Icon="@(_done ? "check" : "download")" Disabled="@(_rows.Count == 0)" OnClick="Download">@(_done ? "Downloaded" : "Download .xlsx")</Btn>
+                <Btn Variant="primary" Size="lg" Icon="download" Disabled="@(_rows.Count == 0)" OnClick="Download">Download .xlsx</Btn>
                 <div style="font-size:11.5px;color:var(--text-mute);display:flex;gap:6px;align-items:flex-start;">
                     <span style="margin-top:1px;flex:none;"><Icon Name="info" Size="13" /></span>
                     <span>Generated via ExcelsiorClosedXml — a real .xlsx workbook with the columns previewed here.</span>
@@ -158,7 +160,6 @@ else
     private DateOnly _ref;
     private IReadOnlyList<TimesheetRow> _rows = [];
     private int _totalMin;
-    private bool _done;
     private bool _loaded;
 
     protected override async Task OnInitializedAsync()
@@ -172,7 +173,6 @@ else
 
     private async Task LoadAsync()
     {
-        _done = false;
         _job = await Data.JobAsync(_jobId);
         if (_job is null) return;
         _state = Data.EffectiveState(_job, _user);
@@ -214,13 +214,21 @@ else
     private async Task Download()
     {
         if (_job is null || _rows.Count == 0) return;
-        var bytes = await ExportSvc.ToWorkbookAsync(_rows);
-        var (from, _) = ExportPeriod.Range(_scope, _ref);
-        var slug = System.Text.RegularExpressions.Regex.Replace(_job.Name, "[^a-zA-Z0-9]+", "-").Trim('-');
-        var filename = $"{slug}_{_scope}_{from:yyyy-MM-dd}.xlsx";
-        await Js.InvokeVoidAsync("tsDownload", filename, Convert.ToBase64String(bytes),
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-        _done = true;
+        try
+        {
+            var bytes = await ExportSvc.ToWorkbookAsync(_rows);
+            var (from, _) = ExportPeriod.Range(_scope, _ref);
+            var slug = System.Text.RegularExpressions.Regex.Replace(_job.Name, "[^a-zA-Z0-9]+", "-").Trim('-');
+            var filename = $"{slug}_{_scope}_{from:yyyy-MM-dd}.xlsx";
+            await Js.InvokeVoidAsync("tsDownload", filename, Convert.ToBase64String(bytes),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            Toast.Success($"{filename} downloaded");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to export {JobId}", _job.Id);
+            Toast.Error("Couldn't generate the export — please try again.");
+        }
     }
 
     private static string Td(string align = "left") =>

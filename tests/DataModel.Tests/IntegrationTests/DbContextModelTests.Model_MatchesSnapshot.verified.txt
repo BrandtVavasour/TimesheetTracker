@@ -89,6 +89,12 @@ Model:
       DecimalPlaces (int) Required
         Annotations: 
           Npgsql:ValueGenerationStrategy: None
+      DefaultEndTime (TimeOnly?)
+        Annotations: 
+          Npgsql:ValueGenerationStrategy: None
+      DefaultStartTime (TimeOnly?)
+        Annotations: 
+          Npgsql:ValueGenerationStrategy: None
       DisplayOrder (int) Required
         Annotations: 
           Npgsql:ValueGenerationStrategy: None
@@ -468,6 +474,8 @@ Model:
       Id (Guid) Required PK AfterSave:Throw ValueGenerated.OnAdd
       CreatedDate (DateTime) Required
       DecimalPlaces (int) Required
+      DefaultEndTime (TimeOnly?)
+      DefaultStartTime (TimeOnly?)
       DisplayOrder (int) Required
       IsArchived (bool) Required
       ModifiedDate (DateTime?)

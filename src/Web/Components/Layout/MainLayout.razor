@@ -46,6 +46,11 @@
     <main style="max-width:1220px;width:100%;margin:0 auto;padding:26px 24px 50px;">
         @Body
     </main>
+
+    @* The layout renders static SSR (interactivity is per-page), so the host
+       must be its own interactive island to share the circuit's scoped
+       IToastService with the pages that raise toasts. *@
+    <ToastHost @rendermode="InteractiveServer" />
 </div>
 
 @code {

@@ -4,6 +4,8 @@
 @inject ITimeCalculationService Calc
 @inject IHolidayService Holidays
 @inject NavigationManager Nav
+@inject IToastService Toast
+@inject ILogger<Weekly> Logger
 
 @if (_job is null)
 {
@@ -281,6 +283,7 @@ else
     </div>
 
     <EntryEditor Open="_editorOpen" Draft="_draft" IsNew="_draftIsNew" Job="_job"
+                 InitialStart="_draftStart" InitialEnd="_draftEnd"
                  OnSaveEntry="SaveEntry" OnDeleteEntry="DeleteEntry" OnCloseEditor="@(() => _editorOpen = false)" />
 }
 
@@ -302,6 +305,8 @@ else
     private bool _editorOpen;
     private bool _draftIsNew;
     private TimeEntry? _draft;
+    private TimeOnly? _draftStart;
+    private TimeOnly? _draftEnd;
 
     protected override async Task OnInitializedAsync()
     {
@@ -371,14 +376,16 @@ else
 
     private void AddEntry(DateOnly date)
     {
+        // Prefill: continue from the day's last entry, else the job's saved
+        // defaults; otherwise leave the times empty for the user to fill in.
         var last = EntriesForDay(date).LastOrDefault();
+        _draftStart = last?.EndTime ?? _job!.DefaultStartTime;
+        _draftEnd = _job!.DefaultEndTime;
         _draft = new TimeEntry
         {
             Id = Guid.NewGuid(),
             JobId = _job!.Id,
             WorkDate = date,
-            StartTime = last?.EndTime ?? new TimeOnly(9, 0),
-            EndTime = new TimeOnly(17, 0),
             EndsNextDay = false,
             BreakMinutes = 30,
         };
@@ -388,13 +395,31 @@ else
 
     private async Task SaveEntry(TimeEntry e)
     {
-        await Data.SaveEntryAsync(_job!.Id, e);
-        await LoadWeekAsync();
+        try
+        {
+            await Data.SaveEntryAsync(_job!.Id, e);
+            await LoadWeekAsync();
+            Toast.Success("Entry saved");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to save entry {EntryId}", e.Id);
+            Toast.Error("Couldn't save the entry — please try again.");
+        }
     }
 
     private async Task DeleteEntry(Guid id)
     {
-        await Data.DeleteEntryAsync(_job!.Id, id);
-        await LoadWeekAsync();
+        try
+        {
+            await Data.DeleteEntryAsync(_job!.Id, id);
+            await LoadWeekAsync();
+            Toast.Success("Entry deleted");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to delete entry {EntryId}", id);
+            Toast.Error("Couldn't delete the entry — please try again.");
+        }
     }
 }

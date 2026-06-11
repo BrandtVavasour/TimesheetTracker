@@ -1,0 +1,30 @@
+@inject IToastService Toasts
+@implements IDisposable
+
+<div style="position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:400;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none;max-width:calc(100vw - 32px);">
+    @foreach (var t in Toasts.Items)
+    {
+        <div data-tone="@t.Tone" style="display:flex;align-items:center;gap:9px;pointer-events:auto;padding:9px 12px 9px 14px;border-radius:99px;
+                    background:var(--surface);border:1px solid @(t.Tone == "error" ? "var(--danger)" : "var(--line-strong)");box-shadow:var(--sh-3);
+                    font-size:13.5px;font-weight:600;color:var(--text);animation:popIn .18s cubic-bezier(.2,.8,.3,1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+            <span style="color:@(t.Tone == "error" ? "var(--danger)" : "var(--accent)");display:inline-flex;flex:none;">
+                <Icon Name="@(t.Tone == "error" ? "info" : "check")" Size="15" Stroke="2.4" />
+            </span>
+            <span style="overflow:hidden;text-overflow:ellipsis;">@t.Message</span>
+            <button @onclick="@(() => Toasts.Dismiss(t.Id))" title="Dismiss" class="focusable"
+                    style="width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;flex:none;border-radius:99px;
+                           border:none;background:transparent;color:var(--text-mute);cursor:pointer;">
+                <Icon Name="x" Size="13" />
+            </button>
+        </div>
+    }
+</div>
+
+@code {
+    protected override void OnInitialized() => Toasts.Changed += OnChanged;
+
+    // Changed can fire from a Task.Delay continuation — marshal to the renderer.
+    private void OnChanged() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Toasts.Changed -= OnChanged;
+}

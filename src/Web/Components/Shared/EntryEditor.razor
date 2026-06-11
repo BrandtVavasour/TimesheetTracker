@@ -24,13 +24,13 @@
                 <div style="display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap;">
                     <label style="display:flex;flex-direction:column;gap:6px;">
                         <span style="font-size:12.5px;font-weight:600;color:var(--text-soft);">Start</span>
-                        <input type="time" class="mono focusable" value="@_e.StartTime.ToString("HH:mm")"
+                        <input type="time" class="mono focusable" value="@(_start?.ToString("HH:mm") ?? "")"
                                @onchange="@(e => OnTime(true, e.Value?.ToString()))" style="@TimeInputStyle" />
                     </label>
                     <div style="padding-bottom:9px;color:var(--text-mute);"><Icon Name="arrowR" Size="16" /></div>
                     <label style="display:flex;flex-direction:column;gap:6px;">
                         <span style="font-size:12.5px;font-weight:600;color:var(--text-soft);">End</span>
-                        <input type="time" class="mono focusable" value="@_e.EndTime.ToString("HH:mm")"
+                        <input type="time" class="mono focusable" value="@(_end?.ToString("HH:mm") ?? "")"
                                @onchange="@(e => OnTime(false, e.Value?.ToString()))" style="@TimeInputStyle" />
                     </label>
                     <label style="display:flex;align-items:center;gap:8px;padding-bottom:9px;margin-left:4px;cursor:pointer;">
@@ -104,7 +104,11 @@
                         </div>
                     </div>
                     <div style="margin-left:auto;font-size:12px;color:var(--text-soft);max-width:150px;text-align:right;">
-                        @(Valid ? $"at {Job.DecimalPlaces} dp precision" : "End must be after start (after break).")
+                        @(Valid
+                            ? $"at {Job.DecimalPlaces} dp precision"
+                            : _start is null || _end is null
+                                ? "Enter start and end times."
+                                : "End must be after start (after break).")
                     </div>
                 </div>
             </div>
@@ -112,14 +116,10 @@
             <div style="display:flex;gap:8px;justify-content:flex-end;padding:14px 20px;border-top:1px solid var(--line);background:var(--surface-2);">
                 @if (!IsNew)
                 {
-                    <button class="ts-btn focusable" @onclick="Delete" style="@DeleteStyle">
-                        <Icon Name="trash" Size="16" /> Delete
-                    </button>
+                    <Btn Variant="danger" Icon="trash" OnClick="Delete" Style="margin-right:auto;">Delete</Btn>
                 }
-                <button class="ts-btn focusable" @onclick="OnClose" style="@CancelStyle">Cancel</button>
-                <button class="ts-btn focusable" data-variant="primary" disabled="@(!Valid)" @onclick="Save" style="@SaveStyle">
-                    <Icon Name="check" Size="16" /> Save entry
-                </button>
+                <Btn OnClick="OnClose">Cancel</Btn>
+                <Btn Variant="primary" Icon="check" Disabled="@(!Valid)" OnClick="Save">Save entry</Btn>
             </div>
         </div>
     </div>
@@ -130,14 +130,22 @@
     [Parameter] public TimeEntry? Draft { get; set; }
     [Parameter] public bool IsNew { get; set; }
     [Parameter, EditorRequired] public Job Job { get; set; } = null!;
+    /// <summary>Prefill for a new entry's start time (job default / previous entry); null = leave empty.</summary>
+    [Parameter] public TimeOnly? InitialStart { get; set; }
+    /// <summary>Prefill for a new entry's end time (job default); null = leave empty.</summary>
+    [Parameter] public TimeOnly? InitialEnd { get; set; }
     [Parameter] public EventCallback<TimeEntry> OnSaveEntry { get; set; }
     [Parameter] public EventCallback<Guid> OnDeleteEntry { get; set; }
     [Parameter] public EventCallback OnCloseEditor { get; set; }
 
     private TimeEntry? _e;
     private TimeEntry? _lastDraft;
+    // Times are tracked separately from the entity so they can start empty —
+    // an unset time is "fill me in", not 00:00. Synced into _e once both exist.
+    private TimeOnly? _start;
+    private TimeOnly? _end;
 
-    private int Dur => _e is null ? 0 : Calc.DurationMinutes(_e);
+    private int Dur => _e is null || _start is null || _end is null ? 0 : Calc.DurationMinutes(_e);
     private bool Valid => Dur > 0;
 
     // Wide enough for 12-hour locales (e.g. "12:30 pm" + the picker icon in
@@ -148,14 +156,6 @@
     private static string InputStyle(string extra) =>
         $"height:36px;width:100%;padding:0 10px;border-radius:var(--r-sm);border:1px solid var(--line-strong);background:var(--surface);color:var(--text);font-size:14px;outline:none;{extra}";
 
-    private static string BtnStyle(string bg, string col, string bd) =>
-        $"display:inline-flex;align-items:center;justify-content:center;gap:7px;height:36px;padding:0 14px;font-size:14px;font-weight:600;" +
-        $"border-radius:var(--r-sm);cursor:pointer;white-space:nowrap;border:1px solid {bd};background:{bg};color:{col};box-shadow:var(--sh-1);";
-
-    private string DeleteStyle => BtnStyle("var(--surface)", "var(--danger)", "var(--line-strong)") + "margin-right:auto;";
-    private string CancelStyle => BtnStyle("var(--surface)", "var(--text)", "var(--line-strong)");
-    private string SaveStyle => BtnStyle("var(--accent)", "#fff", "transparent") + (Valid ? "" : "opacity:.5;cursor:not-allowed;");
-
     protected override void OnParametersSet()
     {
         // Re-clone whenever a new draft is handed in.
@@ -163,6 +163,12 @@
         {
             _lastDraft = Draft;
             _e = Draft is null ? null : Clone(Draft);
+            if (_e is not null)
+            {
+                _start = IsNew ? InitialStart : _e.StartTime;
+                _end = IsNew ? InitialEnd : _e.EndTime;
+                SyncTimes();
+            }
         }
     }
 
@@ -182,14 +188,22 @@
         return label;
     }
 
-    private bool SuggestsNextDay() => _e is not null && _e.EndTime <= _e.StartTime;
+    private bool SuggestsNextDay() => _start.HasValue && _end.HasValue && _end <= _start;
 
     private void OnTime(bool isStart, string? value)
     {
-        if (_e is null || !TimeOnly.TryParse(value, out var t)) return;
-        if (isStart) _e.StartTime = t; else _e.EndTime = t;
-        // Auto-suggest crossing midnight (mirrors the prototype).
-        if (_e.EndTime <= _e.StartTime && _e.EndTime != _e.StartTime) _e.EndsNextDay = true;
+        TimeOnly? t = TimeOnly.TryParse(value, out var parsed) ? parsed : null;
+        if (isStart) _start = t; else _end = t;
+        SyncTimes();
+    }
+
+    /// <summary>Write the chosen times into the entity and auto-suggest crossing midnight.</summary>
+    private void SyncTimes()
+    {
+        if (_e is null || _start is null || _end is null) return;
+        _e.StartTime = _start.Value;
+        _e.EndTime = _end.Value;
+        if (_e.EndTime < _e.StartTime) _e.EndsNextDay = true;
         else if (_e.EndTime > _e.StartTime) _e.EndsNextDay = false;
     }
 

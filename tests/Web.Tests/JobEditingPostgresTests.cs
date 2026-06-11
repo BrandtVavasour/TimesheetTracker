@@ -101,6 +101,31 @@ public abstract class JobEditingFlowTests
     }
 
     [Test]
+    public async Task SaveJob_PersistsDefaultHours()
+    {
+        var data = await NewUserDataAsync();
+        var job = await data.AddJobAsync();
+
+        var draft = (await data.JobAsync(job.Id))!;
+        draft.DefaultStartTime = new TimeOnly(8, 30);
+        draft.DefaultEndTime = new TimeOnly(17, 0);
+        await data.SaveJobAsync(draft);
+
+        var saved = (await data.JobAsync(job.Id))!;
+        saved.DefaultStartTime.Should().Be(new TimeOnly(8, 30));
+        saved.DefaultEndTime.Should().Be(new TimeOnly(17, 0));
+
+        // Clearing them must persist too (back to "no default").
+        saved.DefaultStartTime = null;
+        saved.DefaultEndTime = null;
+        await data.SaveJobAsync(saved);
+
+        var cleared = (await data.JobAsync(job.Id))!;
+        cleared.DefaultStartTime.Should().BeNull();
+        cleared.DefaultEndTime.Should().BeNull();
+    }
+
+    [Test]
     public async Task Save_RemovingField_DeletesIt()
     {
         var data = await NewUserDataAsync();

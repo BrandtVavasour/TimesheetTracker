@@ -7,8 +7,12 @@
 }
 else
 {
-    <button class="ts-btn focusable" data-variant="@Variant" disabled="@Disabled" @onclick="OnClick" @onclick:stopPropagation="StopPropagation" style="@FullStyle">
-        @if (Icon is not null) { <Icon Name="@Icon" Size="@IconSize" /> }
+    <button class="ts-btn focusable" data-variant="@Variant" disabled="@(Disabled || _busy)" @onclick="HandleClick" @onclick:stopPropagation="StopPropagation" style="@FullStyle">
+        @if (_busy)
+        {
+            <span class="ts-spin" style="width:@(IconSize)px;height:@(IconSize)px;border:2px solid currentColor;border-top-color:transparent;border-radius:99px;flex:none;"></span>
+        }
+        else if (Icon is not null) { <Icon Name="@Icon" Size="@IconSize" /> }
         @ChildContent
     </button>
 }
@@ -23,6 +27,24 @@ else
     [Parameter] public string? Style { get; set; }
     [Parameter] public EventCallback OnClick { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>True while the async OnClick handler is in flight — the button
+    /// disables and shows a spinner so an action can't be double-submitted.</summary>
+    private bool _busy;
+
+    private async Task HandleClick()
+    {
+        if (Disabled || _busy) return;
+        _busy = true;
+        try
+        {
+            await OnClick.InvokeAsync();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
 
     private double H => Size switch { "sm" => 30, "lg" => 42, _ => 36 };
     private double Px => Size switch { "sm" => 10, "lg" => 18, _ => 14 };
@@ -44,7 +66,7 @@ else
         get
         {
             var v = V;
-            var dim = Disabled ? "opacity:.5;cursor:not-allowed;" : "";
+            var dim = Disabled ? "opacity:.5;cursor:not-allowed;" : _busy ? "opacity:.75;cursor:progress;" : "";
             return $"display:inline-flex;align-items:center;justify-content:center;gap:7px;height:{H}px;padding:0 {Px}px;" +
                    $"font-size:{Fs}px;font-weight:600;border-radius:var(--r-sm);cursor:pointer;white-space:nowrap;letter-spacing:-0.01em;" +
                    $"text-decoration:none;border:1px solid {v.bd};background:{v.bg};color:{v.col};box-shadow:{v.shadow};{dim}{Style}";

@@ -19,6 +19,12 @@ public class Job : BaseEntity
     /// <summary>Scheduled work days; drives grid emphasis only, never blocks entry.</summary>
     public DaysOfWeek WorkDays { get; set; } = DaysOfWeek.Weekdays;
 
+    /// <summary>Optional default start time prefilled into new entries. Null = no default.</summary>
+    public TimeOnly? DefaultStartTime { get; set; }
+
+    /// <summary>Optional default end time prefilled into new entries. Null = no default.</summary>
+    public TimeOnly? DefaultEndTime { get; set; }
+
     public bool IsArchived { get; set; }
     public int DisplayOrder { get; set; }
 

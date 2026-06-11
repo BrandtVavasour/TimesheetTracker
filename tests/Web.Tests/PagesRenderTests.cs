@@ -41,6 +41,7 @@ public class PagesRenderTests
         ctx.Services.AddSingleton<IClock>(new StubClock(SeedData.Today));
         ctx.Services.AddScoped<ICurrentUser>(_ => new StubCurrentUser(SeedData.DemoUserId));
         ctx.Services.AddScoped<ITimesheetData, TimesheetData>();
+        ctx.Services.AddScoped<IToastService, ToastService>();
 
         using var scope = ctx.Services.CreateScope();
         seed(scope.ServiceProvider.GetRequiredService<TimesheetDbContext>());

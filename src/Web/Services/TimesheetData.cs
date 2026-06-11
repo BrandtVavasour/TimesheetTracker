@@ -116,6 +116,8 @@ public sealed class TimesheetData(IDbContextFactory<TimesheetDbContext> dbFactor
         existing.StateOverride = job.StateOverride;
         existing.DecimalPlaces = job.DecimalPlaces;
         existing.WorkDays = job.WorkDays;
+        existing.DefaultStartTime = job.DefaultStartTime;
+        existing.DefaultEndTime = job.DefaultEndTime;
         existing.IsArchived = job.IsArchived;
         existing.ModifiedDate = DateTime.UtcNow;
 
