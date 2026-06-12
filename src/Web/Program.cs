@@ -165,13 +165,18 @@ try
             options.Lockout.MaxFailedAccessAttempts = 5;
             options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
             options.User.RequireUniqueEmail = true;
-            // Require a confirmed email only when we can actually send one.
-            options.SignIn.RequireConfirmedAccount = useSes;
+            // New local accounts get a grace window (AccountGrace.Period) to use the
+            // app before they must verify their email, so sign-in is NOT blocked on
+            // confirmation. The grace is enforced in MainLayout once the window ends.
+            options.SignIn.RequireConfirmedAccount = false;
+            // Email-confirmation links stay valid for the whole grace window.
+            options.Tokens.EmailConfirmationTokenProvider = "EmailConfirmDP";
         })
         .AddRoles<IdentityRole<Guid>>()
         .AddEntityFrameworkStores<TimesheetDbContext>()
         .AddSignInManager()
-        .AddDefaultTokenProviders();
+        .AddDefaultTokenProviders()
+        .AddTokenProvider<EmailConfirmationTokenProvider<AppUser>>("EmailConfirmDP");
 
     builder.Services.AddSingleton<IClock, SystemClock>();
     builder.Services.AddScoped<ICurrentUser, CurrentUser>();

@@ -28,6 +28,10 @@ public class TimesheetDbContext(DbContextOptions<TimesheetDbContext> options)
         modelBuilder.Entity<AppUser>().ToTable("Users");
         modelBuilder.Entity<IdentityRole<Guid>>().ToTable("Roles");
 
+        // Stamp account creation time at the database so existing rows and any
+        // insert path get a value; registration also sets it explicitly.
+        modelBuilder.Entity<AppUser>().Property(u => u.CreatedAt).HasDefaultValueSql("now()");
+
         // Per-user query filters (defence in depth).
         modelBuilder.Entity<Job>().HasQueryFilter(j => j.UserId == CurrentUserId);
         modelBuilder.Entity<TimeEntry>().HasQueryFilter(e => e.Job.UserId == CurrentUserId);

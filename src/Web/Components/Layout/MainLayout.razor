@@ -53,6 +53,18 @@
         </div>
     </header>
 
+    @if (_showVerifyBanner)
+    {
+        <div style="background:var(--holiday-tint);border-bottom:1px solid var(--holiday-bd);">
+            <div style="max-width:1220px;margin:0 auto;padding:9px 24px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--holiday);">
+                <span style="display:inline-flex;align-items:center;gap:7px;font-weight:600;">
+                    <Icon Name="info" Size="15" /> Verify your email to keep access — @_verifyDaysLeft day@(_verifyDaysLeft == 1 ? "" : "s") left.
+                </span>
+                <a href="Account/VerifyEmail" style="margin-left:auto;color:var(--holiday);font-weight:700;text-decoration:underline;">Verify now</a>
+            </div>
+        </div>
+    }
+
     <main style="max-width:1220px;width:100%;margin:0 auto;padding:26px 24px 50px;">
         @Body
     </main>
@@ -76,6 +88,8 @@
     ];
 
     private string _displayName = "";
+    private bool _showVerifyBanner;
+    private int _verifyDaysLeft;
     private string Initials => string.Concat(
         _displayName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(s => s[0]));
 
@@ -86,7 +100,23 @@
         Nav.LocationChanged += OnLocationChanged;
         if (AuthState is not null && (await AuthState).User.Identity?.IsAuthenticated == true)
         {
-            _displayName = (await Data.CurrentUserAsync()).DisplayName;
+            var user = await Data.CurrentUserAsync();
+            _displayName = user.DisplayName;
+
+            // Email-verification grace: unverified accounts may use the app for a
+            // window, then are blocked until they verify. Within the window we show
+            // a reminder banner; past it we bounce them to the verify page.
+            if (!user.EmailConfirmed)
+            {
+                var now = DateTimeOffset.UtcNow;
+                if (TimesheetTracker.Web.Services.AccountGrace.IsBlocked(false, user.CreatedAt, now))
+                {
+                    Nav.NavigateTo("Account/VerifyEmail", forceLoad: true);
+                    return;
+                }
+                _verifyDaysLeft = TimesheetTracker.Web.Services.AccountGrace.DaysLeft(user.CreatedAt, now);
+                _showVerifyBanner = true;
+            }
         }
     }
     private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e) => StateHasChanged();

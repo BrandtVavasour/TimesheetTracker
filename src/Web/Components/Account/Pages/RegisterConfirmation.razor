@@ -1,11 +1,22 @@
 @page "/Account/RegisterConfirmation"
 
-<PageTitle>Confirm your email · Timesheet Tracker</PageTitle>
+<PageTitle>Check your email · Timesheet Tracker</PageTitle>
 
-<AuthShell Title="Confirm your email" Subtitle="We've sent a confirmation link to your inbox. Click it to activate your account, then sign in.">
-    <a href="Account/Login" style="color:var(--accent);font-weight:600;text-decoration:none;">← Back to sign in</a>
+<AuthShell Title="You're in — check your email"
+           Subtitle="@($"We've sent a verification link to {DisplayEmail}. You can start using Timesheet Tracker right away — just verify within {GraceDays} days to keep your access.")">
+    <a href="@(string.IsNullOrEmpty(ReturnUrl) ? "/" : ReturnUrl)" class="ts-btn focusable" data-variant="primary"
+       style="display:inline-flex;align-items:center;justify-content:center;width:100%;height:42px;font-size:15px;font-weight:600;border-radius:var(--r-sm);text-decoration:none;border:1px solid transparent;background:var(--accent);color:#fff;box-shadow:var(--sh-1);">
+        Continue to Timesheet Tracker
+    </a>
+    <p style="margin:16px 0 0;font-size:12.5px;color:var(--text-mute);text-align:center;">
+        Didn't get the email? You can resend it any time from the banner inside the app.
+    </p>
 </AuthShell>
 
 @code {
     [SupplyParameterFromQuery] private string? Email { get; set; }
+    [SupplyParameterFromQuery] private string? ReturnUrl { get; set; }
+
+    private int GraceDays => (int)TimesheetTracker.Web.Services.AccountGrace.Period.TotalDays;
+    private string DisplayEmail => string.IsNullOrWhiteSpace(Email) ? "your inbox" : Email;
 }

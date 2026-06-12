@@ -13,6 +13,10 @@ Model:
       ConcurrencyStamp (string) Concurrency
         Annotations: 
           Npgsql:ValueGenerationStrategy: None
+      CreatedAt (DateTimeOffset) Required ValueGenerated.OnAdd
+        Annotations: 
+          Npgsql:ValueGenerationStrategy: None
+          Relational:DefaultValueSql: now()
       DefaultState (AustralianState) Required
         Annotations: 
           Npgsql:ValueGenerationStrategy: None
@@ -451,6 +455,7 @@ Model:
       Id (Guid) Required PK AfterSave:Throw ValueGenerated.OnAdd
       AccessFailedCount (int) Required
       ConcurrencyStamp (string) Concurrency
+      CreatedAt (DateTimeOffset) Required ValueGenerated.OnAdd
       DefaultState (AustralianState) Required
       DisplayName (string) Required MaxLength(200)
       Email (string) MaxLength(256)

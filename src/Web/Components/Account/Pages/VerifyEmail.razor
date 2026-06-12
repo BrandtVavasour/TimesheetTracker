@@ -1,0 +1,97 @@
+@page "/Account/VerifyEmail"
+
+@using System.Text
+@using System.Text.Encodings.Web
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.WebUtilities
+@using TimesheetTracker.Web.Services
+
+@inject UserManager<AppUser> UserManager
+@inject IEmailSender<AppUser> EmailSender
+@inject AuthenticationStateProvider AuthState
+@inject NavigationManager NavigationManager
+@inject IdentityRedirectManager RedirectManager
+@inject ILogger<VerifyEmail> Logger
+
+<PageTitle>Verify your email · Timesheet Tracker</PageTitle>
+
+<AuthShell Title="@Title" Subtitle="@Subtitle">
+    @if (_user is null)
+    {
+        <a href="Account/Login" style="color:var(--accent);font-weight:600;text-decoration:none;">← Sign in</a>
+    }
+    else if (_confirmed)
+    {
+        <a href="/" class="ts-btn focusable" data-variant="primary"
+           style="display:inline-flex;align-items:center;justify-content:center;width:100%;height:42px;font-size:15px;font-weight:600;border-radius:var(--r-sm);text-decoration:none;border:1px solid transparent;background:var(--accent);color:#fff;box-shadow:var(--sh-1);">
+            Continue to Timesheet Tracker
+        </a>
+    }
+    else
+    {
+        <StatusMessage Message="@_status" />
+        <EditForm Model="_form" method="post" OnValidSubmit="Resend" FormName="resend">
+            <button type="submit" class="ts-btn focusable" data-variant="primary"
+                    style="display:inline-flex;align-items:center;justify-content:center;width:100%;height:42px;font-size:15px;font-weight:600;border-radius:var(--r-sm);cursor:pointer;border:1px solid transparent;background:var(--accent);color:#fff;box-shadow:var(--sh-1);">
+                Resend verification email
+            </button>
+        </EditForm>
+        <p style="margin:14px 0 0;font-size:12.5px;color:var(--text-mute);text-align:center;">
+            Sent to <span style="font-weight:600;color:var(--text-soft);">@_user.Email</span>.
+            @if (!_blocked)
+            {
+                <a href="/" style="color:var(--accent);font-weight:600;text-decoration:none;">Back to the app</a>
+            }
+        </p>
+    }
+</AuthShell>
+
+@code {
+    private AppUser? _user;
+    private bool _confirmed;
+    private bool _blocked;
+    private int _daysLeft;
+    private string? _status;
+    private readonly object _form = new();
+
+    [SupplyParameterFromQuery] private string? Status { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthState.GetAuthenticationStateAsync();
+        _user = await UserManager.GetUserAsync(state.User);
+        if (_user is null) return;
+
+        _confirmed = await UserManager.IsEmailConfirmedAsync(_user);
+        var now = DateTimeOffset.UtcNow;
+        _blocked = AccountGrace.IsBlocked(_confirmed, _user.CreatedAt, now);
+        _daysLeft = AccountGrace.DaysLeft(_user.CreatedAt, now);
+        if (Status == "sent") _status = "Verification email sent — check your inbox (and spam).";
+    }
+
+    private string Title => _user is null
+        ? "Verify your email"
+        : _confirmed ? "Email verified"
+        : _blocked ? "Verify to continue"
+        : "Verify your email";
+
+    private string Subtitle => _user is null
+        ? "Sign in to manage your account verification."
+        : _confirmed ? "Your email is verified — you have full access."
+        : _blocked ? "Your sign-up access window has ended. Verify your email to keep using Timesheet Tracker."
+        : $"You have {_daysLeft} day{(_daysLeft == 1 ? "" : "s")} left to verify. Resend the link if you can't find it.";
+
+    private async Task Resend()
+    {
+        if (_user is null) return;
+        var userId = await UserManager.GetUserIdAsync(_user);
+        var code = await UserManager.GenerateEmailConfirmationTokenAsync(_user);
+        code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
+        var callbackUrl = NavigationManager.GetUriWithQueryParameters(
+            NavigationManager.ToAbsoluteUri("Account/ConfirmEmail").AbsoluteUri,
+            new Dictionary<string, object?> { ["userId"] = userId, ["code"] = code });
+        await EmailSender.SendConfirmationLinkAsync(_user, _user.Email!, HtmlEncoder.Default.Encode(callbackUrl));
+        Logger.LogInformation("Resent email verification link.");
+        RedirectManager.RedirectTo("Account/VerifyEmail", new() { ["status"] = "sent" });
+    }
+}
