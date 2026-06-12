@@ -145,6 +145,14 @@ try
         o.SlidingExpiration = true;
     });
 
+    // Force the antiforgery cookie Secure too — it defaults to SameAsRequest,
+    // and the origin sees HTTP behind the tunnel, so it would otherwise ship
+    // without the Secure flag.
+    builder.Services.AddAntiforgery(o => o.Cookie.SecurePolicy = CookieSecurePolicy.Always);
+
+    // Longer HSTS than the 30-day default (the header passes through Cloudflare).
+    builder.Services.AddHsts(o => o.MaxAge = TimeSpan.FromDays(365));
+
     builder.Services
         .AddIdentityCore<AppUser>(options =>
         {
