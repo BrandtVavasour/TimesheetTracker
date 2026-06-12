@@ -178,6 +178,7 @@ try
     builder.Services.AddScoped<ITimesheetData, TimesheetData>();
     builder.Services.AddScoped<IToastService, ToastService>();
     builder.Services.AddScoped<IAccountInfo, AccountInfo>();
+    builder.Services.AddScoped<IAdminService, AdminService>();
     builder.Services.AddSingleton<IAssetVersion, AssetVersion>();
     builder.Services.AddScoped<FluentValidation.IValidator<Job>, TimesheetTracker.DataModel.Validation.JobValidator>();
     builder.Services.AddScoped<FluentValidation.IValidator<TimesheetTracker.Web.Validation.ProfileForm>, TimesheetTracker.Web.Validation.ProfileFormValidator>();
@@ -209,6 +210,11 @@ try
             return RateLimitPartition.GetNoLimiter("unlimited");
         });
     });
+
+    // Operator-assigned admin(s). Comma/semicolon separated; granted the Admin
+    // role on startup. If unset, no admin is granted (the bootstrap breaks out).
+    var adminEmails = Environment.GetEnvironmentVariable("ADMIN_EMAIL")
+        ?? builder.Configuration["ADMIN_EMAIL"];
 
     var app = builder.Build();
 
@@ -296,6 +302,10 @@ try
         {
             await db.Database.MigrateAsync();
         }
+
+        // Grant the Admin role to the configured ADMIN_EMAIL(s) now that the
+        // schema exists. No-op (and logs a warning) when ADMIN_EMAIL is unset.
+        await AdminBootstrap.EnsureAdminsAsync(scope.ServiceProvider, adminEmails, app.Logger);
     }
 
     app.Run();

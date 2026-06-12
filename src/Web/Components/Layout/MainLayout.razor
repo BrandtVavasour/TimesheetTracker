@@ -24,6 +24,16 @@
                         <Icon Name="@n.Icon" Size="16" /><span class="ts-hide-narrow">@n.Label</span>
                     </a>
                 }
+                @* Admins only — the route itself is also [Authorize(Roles=Admin)] gated. *@
+                <AuthorizeView Roles="Admin">
+                    @{ var adminOn = IsActive("admin"); }
+                    <a href="admin" class="navitem focusable"
+                       style="display:flex;align-items:center;gap:7px;padding:8px 13px;border-radius:var(--r-sm);cursor:pointer;text-decoration:none;
+                              background:@(adminOn ? "var(--accent-tint)" : "transparent");color:@(adminOn ? "var(--accent-text)" : "var(--text-soft)");
+                              font-size:13.5px;font-weight:600;white-space:nowrap;">
+                        <Icon Name="sliders" Size="16" /><span class="ts-hide-narrow">Admin</span>
+                    </a>
+                </AuthorizeView>
             </nav>
             <div style="margin-left:auto;display:flex;align-items:center;gap:8px;flex:none;">
                 <a href="profile" class="focusable" title="@_displayName"

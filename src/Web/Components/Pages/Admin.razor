@@ -1,0 +1,102 @@
+@page "/admin"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "Admin")]
+@using TimesheetTracker.Web.Services
+@inject IAdminService AdminSvc
+@inject IToastService Toast
+@inject ILogger<Admin> Logger
+
+<PageHead Title="Admin" Subtitle="Every account in the system and its sign-in status." />
+
+@if (_users is null)
+{
+    <div style="margin-top:22px;color:var(--text-mute);">Loading…</div>
+}
+else
+{
+    <div style="display:flex;flex-direction:column;gap:16px;padding:22px 0 40px;max-width:920px;">
+        <Card Title="Users" Desc="@($"{_users.Count} account{(_users.Count == 1 ? "" : "s")} · {_users.Count(u => u.IsAdmin)} admin · {_users.Count(u => u.IsLockedOut)} locked")">
+            <div style="display:flex;flex-direction:column;gap:10px;">
+                @foreach (var u in _users)
+                {
+                    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:12px 14px;border-radius:var(--r-md);
+                                border:1px solid @(u.IsLockedOut ? "var(--danger-tint)" : "var(--line)");background:@(u.IsLockedOut ? "var(--danger-tint)" : "var(--surface)");">
+                        <span style="width:40px;height:40px;flex:none;border-radius:11px;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:15px;font-weight:700;">@Initials(u.DisplayName)</span>
+
+                        <div style="flex:1;min-width:170px;">
+                            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                                <span style="font-size:14.5px;font-weight:700;">@u.DisplayName</span>
+                                @if (u.IsAdmin) { <Badge Tone="accent" IconName="check">Admin</Badge> }
+                                @if (u.IsLockedOut) { <Badge Tone="danger" IconName="flag">Locked</Badge> }
+                                @if (!u.EmailConfirmed) { <Badge Tone="holiday">Email unverified</Badge> }
+                            </div>
+                            <div style="font-size:12.5px;color:var(--text-soft);margin-top:1px;">@u.Email</div>
+                            @if (StatusLine(u) is { } status)
+                            {
+                                <div style="font-size:12px;color:@(u.IsLockedOut ? "var(--danger)" : "var(--text-mute)");margin-top:3px;">@status</div>
+                            }
+                        </div>
+
+                        <div style="display:flex;align-items:center;gap:10px;flex:none;">
+                            <span style="font-size:11.5px;color:var(--text-mute);white-space:nowrap;">
+                                @(u.HasPassword ? "Password" : "Google only")
+                            </span>
+                            @if (u.IsLockedOut)
+                            {
+                                <Btn Size="sm" Variant="danger" Icon="check" OnClick="@(() => Unlock(u))">Unlock</Btn>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        </Card>
+
+        <div style="font-size:11.5px;color:var(--text-mute);display:flex;gap:6px;align-items:flex-start;">
+            <span style="margin-top:1px;flex:none;"><Icon Name="info" Size="13" /></span>
+            <span>Lockout is automatic after @Max failed sign-ins and clears itself after 15 minutes. Unlock clears it immediately and resets the failed-attempt count.</span>
+        </div>
+    </div>
+}
+
+@code {
+    private IReadOnlyList<AdminUserView>? _users;
+
+    private int Max => _users?.FirstOrDefault()?.MaxFailedAccessAttempts ?? 5;
+
+    protected override async Task OnInitializedAsync() => await ReloadAsync();
+
+    private async Task ReloadAsync() => _users = await AdminSvc.GetUsersAsync();
+
+    private static string Initials(string name) => string.Concat(
+        name.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(s => s[0]));
+
+    // The honest "lockout reason": Identity stores no free-text reason — a lockout
+    // is purely "exceeded the failed-attempt threshold", so we surface the count
+    // and the auto-unlock countdown.
+    private static string? StatusLine(AdminUserView u)
+    {
+        if (u.IsLockedOut)
+        {
+            // Identity zeroes AccessFailedCount the moment it locks the account,
+            // so the meaningful figure is the threshold that tripped the lockout.
+            var mins = u.LockoutEnd is { } end
+                ? Math.Max(1, (int)Math.Ceiling((end - DateTimeOffset.UtcNow).TotalMinutes))
+                : 0;
+            var tail = mins > 0 ? $" · auto-unlocks in ~{mins} min" : "";
+            return $"Locked after {u.MaxFailedAccessAttempts} failed sign-ins{tail}";
+        }
+        if (u.AccessFailedCount > 0)
+            return $"{u.AccessFailedCount}/{u.MaxFailedAccessAttempts} failed sign-ins";
+        return null;
+    }
+
+    private async Task Unlock(AdminUserView u) =>
+        await Toast.RunAsync(Logger,
+            async () =>
+            {
+                if (!await AdminSvc.UnlockAsync(u.Id))
+                    throw new InvalidOperationException("Account no longer exists.");
+                await ReloadAsync();
+            },
+            $"Unlocked {u.Email}", "Couldn't unlock the account — please try again.", $"unlock {u.Id}");
+}
