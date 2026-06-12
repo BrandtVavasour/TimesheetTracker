@@ -31,29 +31,30 @@ else
     var monthMin = cells.Where(d => d.Month == _viewMonth.Month).Sum(MinFor);
 
     <div style="display:flex;flex-direction:column;gap:16px;padding:22px 0 40px;">
-        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
-            <div>
+        <div style="display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;">
+            <div style="margin-right:auto;">
                 <h2 style="margin:0;font-size:22px;font-weight:700;letter-spacing:-0.02em;">@System.Globalization.CultureInfo.InvariantCulture.DateTimeFormat.GetMonthName(_viewMonth.Month) @_viewMonth.Year</h2>
-                <div style="font-size:13px;color:var(--text-soft);">@_job.Name · @_state · @CalendarFormat.FyLabel(_viewMonth)</div>
+                <div style="font-size:13px;color:var(--text-soft);margin-top:2px;">@_state · @CalendarFormat.FyLabel(_viewMonth)</div>
             </div>
-            <div style="margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-                <select class="input" style="max-width:220px;" value="@_jobId" @onchange="OnJobChange">
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end;">
+                <select class="input" style="width:auto;min-width:160px;max-width:220px;" value="@_jobId" @onchange="OnJobChange">
                     @foreach (var j in _jobs)
                     {
                         <option value="@j.Id">@j.Name</option>
                     }
                 </select>
-                <div style="display:flex;align-items:center;gap:8px;padding:7px 12px;border-radius:var(--r-md);background:var(--surface);border:1px solid var(--line);">
-                    <span style="font-size:11px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:var(--text-mute);">This month</span>
+                <div style="height:36px;display:flex;align-items:center;gap:9px;padding:0 12px;border-radius:var(--r-sm);background:var(--surface);border:1px solid var(--line-strong);">
+                    <span style="font-size:10.5px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:var(--text-mute);">This month</span>
                     <CopyValue Value="@HoursFormat.Decimal(monthMin, _job.DecimalPlaces)" Size="sm" Tone="accent" />
                     <span class="mono" style="font-size:12.5px;color:var(--text-soft);">@HoursFormat.Hmm(monthMin)</span>
                 </div>
-                <Btn Variant="outline" Size="sm" OnClick="@(() => GoMonth(99))">Today</Btn>
-                <div style="display:flex;align-items:center;gap:2px;background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--r-md);padding:2px;box-shadow:var(--sh-1);">
+                <div style="height:36px;display:flex;align-items:center;gap:2px;background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--r-sm);padding:3px;box-shadow:var(--sh-1);">
                     <button class="ts-iconbtn focusable" @onclick="@(() => GoMonth(-1))" title="Previous month"
-                            style="width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;border-radius:var(--r-sm);border:none;background:transparent;color:var(--text-soft);cursor:pointer;"><Icon Name="chevL" Size="17" /></button>
+                            style="width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border-radius:var(--r-xs);border:none;background:transparent;color:var(--text-soft);cursor:pointer;"><Icon Name="chevL" Size="17" /></button>
+                    <button class="focusable" @onclick="@(() => GoMonth(99))" title="Jump to current month"
+                            style="height:30px;padding:0 12px;border:none;background:transparent;color:var(--text-soft);font-size:13px;font-weight:600;cursor:pointer;border-radius:var(--r-xs);">Today</button>
                     <button class="ts-iconbtn focusable" @onclick="@(() => GoMonth(1))" title="Next month"
-                            style="width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;border-radius:var(--r-sm);border:none;background:transparent;color:var(--text-soft);cursor:pointer;"><Icon Name="chevR" Size="17" /></button>
+                            style="width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border-radius:var(--r-xs);border:none;background:transparent;color:var(--text-soft);cursor:pointer;"><Icon Name="chevR" Size="17" /></button>
                 </div>
             </div>
         </div>
