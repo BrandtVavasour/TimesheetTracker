@@ -145,10 +145,11 @@ try
         o.SlidingExpiration = true;
     });
 
-    // Force the antiforgery cookie Secure too — it defaults to SameAsRequest,
-    // and the origin sees HTTP behind the tunnel, so it would otherwise ship
-    // without the Secure flag.
-    builder.Services.AddAntiforgery(o => o.Cookie.SecurePolicy = CookieSecurePolicy.Always);
+    // NB: do NOT set the antiforgery cookie SecurePolicy = Always — unlike the
+    // auth cookie (which merely stamps Secure), the antiforgery system THROWS on
+    // any non-SSL request when Always is set, which would 500 every form page if
+    // the origin ever saw HTTP. Leave it SameAsRequest; the prod scheme is forced
+    // to https below so the cookie still ships Secure in production.
 
     // Longer HSTS than the 30-day default (the header passes through Cloudflare).
     builder.Services.AddHsts(o => o.MaxAge = TimeSpan.FromDays(365));
@@ -212,6 +213,20 @@ try
     var app = builder.Build();
 
     app.UseForwardedHeaders();
+
+    if (!app.Environment.IsDevelopment())
+    {
+        // The origin is HTTP-only and only ever reached via Cloudflare over HTTPS
+        // (TLS terminates at the edge). Force the scheme so Secure cookies, OAuth
+        // redirect URIs, and request logging are correct deterministically —
+        // without depending on cloudflared reliably sending X-Forwarded-Proto.
+        app.Use((ctx, next) =>
+        {
+            ctx.Request.Scheme = "https";
+            return next();
+        });
+    }
+
     app.UseSerilogRequestLogging();
     app.UseRateLimiter();
 
