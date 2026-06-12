@@ -143,14 +143,16 @@ else
                             </div>
                         </div>
                         <div style="display:flex;align-items:center;gap:14px;">
-                            @if (list.Count > 0)
+                            @if (list.Count > 1)
                             {
+                                @* Day totals only add information when there's more than one
+                                   entry — for a single entry they'd duplicate the row below. *@
                                 <div style="display:flex;align-items:center;gap:10px;">
                                     <span class="mono" style="font-size:13px;color:var(--text-mute);">@HoursFormat.Hmm(min)</span>
                                     <CopyValue Value="@HoursFormat.Decimal(min, job.DecimalPlaces)" Size="sm" Tone="accent" />
                                 </div>
                             }
-                            else
+                            else if (list.Count == 0)
                             {
                                 <span style="font-size:12.5px;color:var(--text-mute);font-style:italic;">No entries</span>
                             }
@@ -177,12 +179,12 @@ else
                                     <span title="Worked from home" style="font-size:10px;font-weight:700;color:var(--accent-text);background:var(--accent-tint);border:1px solid var(--accent-tintb);border-radius:4px;padding:0 4px;">WFH</span>
                                 }
                             </span>
-                            <span class="mono" style="font-size:13px;color:@(e.BreakMinutes > 0 ? "var(--text-soft)" : "var(--text-mute)");">@(e.BreakMinutes > 0 ? $"{e.BreakMinutes}m" : "—")</span>
+                            <span class="mono" style="font-size:13px;color:var(--text-soft);">@(e.BreakMinutes > 0 ? $"{e.BreakMinutes}m" : "")</span>
                             <span>
-                                @if (pc is not null) { <CopyValue Value="@pc.Code" Size="sm" /> } else { <span style="color:var(--text-mute);">—</span> }
+                                @if (pc is not null) { <CopyValue Value="@pc.Code" Size="sm" /> }
                             </span>
                             <span style="font-size:13px;color:@(valid ? "var(--text-soft)" : "var(--danger)");overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:12px;">
-                                @if (valid) { @(string.IsNullOrEmpty(e.Notes) ? "—" : e.Notes) } else { @("Invalid: end before start") }
+                                @if (valid) { @(e.Notes) } else { @("Invalid: end before start") }
                             </span>
                             <span style="justify-self:end;">
                                 @if (valid) { <CopyValue Value="@HoursFormat.Decimal(dur, job.DecimalPlaces)" Size="sm" /> } else { <Badge Tone="danger" IconName="info">check</Badge> }
@@ -282,7 +284,9 @@ else
 }
 
 @code {
-    private const string Tpl = "188px 78px 128px minmax(150px,1fr) 112px 66px 36px";
+    // Shift | Break | Project | Notes | Decimal | h:mm | add. Project is sized so
+    // long codes (e.g. DE-0042-02-31) stay on one line; Notes takes the remainder.
+    private const string Tpl = "188px 64px 168px minmax(120px,1fr) 104px 64px 36px";
 
     private AppUser _user = null!;
     private IReadOnlyList<Job> _jobs = [];

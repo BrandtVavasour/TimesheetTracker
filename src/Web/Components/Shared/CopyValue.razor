@@ -1,6 +1,6 @@
 <button @onclick="Copy" @onclick:stopPropagation="true" title="@($"Copy {Value}")"
         data-copy="@Value" class="copyval mono focusable"
-        style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-weight:600;line-height:1.1;
+        style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-weight:600;line-height:1.1;white-space:nowrap;
                font-size:@(Fs)px;padding:@(Py)px @(Px)px;border-radius:var(--r-xs);
                border:1px solid @(_done ? "var(--accent)" : BorderColor);
                background:@(_done ? "var(--accent-tint)" : BgColor);
