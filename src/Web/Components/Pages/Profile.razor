@@ -1,9 +1,14 @@
 @page "/profile"
 @rendermode InteractiveServer
+@using FluentValidation
+@using Microsoft.AspNetCore.Components.Routing
+@using TimesheetTracker.Web.Validation
 @inject ITimesheetData Data
 @inject IToastService Toast
 @inject ILogger<Profile> Logger
 @inject IAccountInfo Account
+@inject IValidator<ProfileForm> Validator
+@inject IJSRuntime JS
 
 <PageHead Title="Profile" Subtitle="Your details and sign-in methods." />
 
@@ -13,6 +18,9 @@
 }
 else
 {
+    <NavigationLock ConfirmExternalNavigation="@IsDirty" OnBeforeInternalNavigation="GuardNavAsync" />
+    @if (_validated) { _validation = Validator.Validate(_form); }
+
     <div style="max-width:680px;display:flex;flex-direction:column;gap:16px;padding:22px 0 40px;">
         <Card Title="Profile" Desc="Shown in the app header and on every export.">
             <div style="display:flex;gap:18px;align-items:center;margin-bottom:18px;">
@@ -24,10 +32,15 @@ else
             </div>
             <div style="display:grid;grid-template-columns:1fr 220px;gap:16px;align-items:start;">
                 <Field Label="Display name">
-                    <input class="input" @bind="_displayName" @bind:event="oninput" />
+                    <input class="input" @bind="_form.DisplayName" @bind:event="oninput"
+                           style="@(FieldError(nameof(ProfileForm.DisplayName)) is not null ? "border-color:var(--danger);" : "")" />
+                    @if (FieldError(nameof(ProfileForm.DisplayName)) is { } err)
+                    {
+                        <span style="font-size:12px;color:var(--danger);">@err</span>
+                    }
                 </Field>
                 <Field Label="Default holiday state" Hint="Used by jobs without an override.">
-                    <select class="input" value="@_defaultState" @onchange="@(e => _defaultState = Enum.Parse<AustralianState>(e.Value!.ToString()!))">
+                    <select class="input" value="@_form.DefaultState" @onchange="@(e => _form.DefaultState = Enum.Parse<AustralianState>(e.Value!.ToString()!))">
                         @foreach (var s in Enum.GetValues<AustralianState>())
                         {
                             <option value="@s">@s</option>
@@ -36,7 +49,7 @@ else
                 </Field>
             </div>
             <div style="display:flex;justify-content:flex-end;margin-top:16px;">
-                <Btn Variant="primary" Icon="check" OnClick="Save">Save profile</Btn>
+                <Btn Variant="primary" Icon="check" Disabled="@(!IsDirty)" OnClick="Save">Save profile</Btn>
             </div>
         </Card>
 
@@ -83,8 +96,16 @@ else
 @code {
     private AppUser? _user;
     private AccountMethods? _methods;
-    private string _displayName = "";
-    private AustralianState _defaultState;
+    private ProfileForm _form = new();
+
+    private FormSnapshot<ProfileForm>? _snapshot;
+    private FluentValidation.Results.ValidationResult? _validation;
+    private bool _validated;
+
+    private bool IsDirty => _snapshot is not null && _snapshot.IsDirty(_form);
+
+    private string? FieldError(string property) =>
+        _validated ? _validation?.Errors.FirstOrDefault(e => e.PropertyName == property)?.ErrorMessage : null;
 
     private string Initials => _user is null ? "" : string.Concat(
         _user.DisplayName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(s => s[0]));
@@ -93,23 +114,38 @@ else
     {
         _user = await Data.CurrentUserAsync();
         _methods = await Account.GetMethodsAsync();
-        _displayName = _user.DisplayName;
-        _defaultState = _user.DefaultState;
+        _form = new ProfileForm { DisplayName = _user.DisplayName, DefaultState = _user.DefaultState };
+        _snapshot = new(_form);
+    }
+
+    private async Task<bool> ConfirmDiscardAsync() =>
+        await JS.InvokeAsync<bool>("confirm", "You have unsaved changes. Discard them?");
+
+    private async Task GuardNavAsync(LocationChangingContext context)
+    {
+        if (IsDirty && !await ConfirmDiscardAsync())
+        {
+            context.PreventNavigation();
+        }
     }
 
     private async Task Save()
     {
-        try
+        _validated = true;
+        _validation = Validator.Validate(_form);
+        if (!_validation.IsValid)
         {
-            await Data.UpdateUserAsync(_displayName, _defaultState);
-            _user = await Data.CurrentUserAsync();
-            Toast.Success("Profile updated");
+            Toast.Error("Please fix the highlighted fields.");
+            return;
         }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Failed to update profile");
-            Toast.Error("Couldn't update your profile — please try again.");
-        }
-    }
 
+        var ok = await Toast.RunAsync(Logger,
+            async () =>
+            {
+                await Data.UpdateUserAsync(_form.DisplayName, _form.DefaultState);
+                _user = await Data.CurrentUserAsync();
+            },
+            "Profile updated", "Couldn't update your profile — please try again.", "save profile");
+        if (ok) _snapshot!.Reset(_form);
+    }
 }

@@ -171,6 +171,7 @@ try
     builder.Services.AddScoped<IAccountInfo, AccountInfo>();
     builder.Services.AddSingleton<IAssetVersion, AssetVersion>();
     builder.Services.AddScoped<FluentValidation.IValidator<Job>, TimesheetTracker.DataModel.Validation.JobValidator>();
+    builder.Services.AddScoped<FluentValidation.IValidator<TimesheetTracker.Web.Validation.ProfileForm>, TimesheetTracker.Web.Validation.ProfileFormValidator>();
 
     // Throttle the unauthenticated auth POSTs (login / register / forgot- and
     // reset-password / external-login) per client IP — Identity lockout only

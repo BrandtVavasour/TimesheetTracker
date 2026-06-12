@@ -1,4 +1,5 @@
 @inject ITimeCalculationService Calc
+@inject IJSRuntime JS
 
 @if (Open && _e is not null)
 {
@@ -150,6 +151,7 @@
 
     private TimeEntry? _e;
     private TimeEntry? _lastDraft;
+    private FormSnapshot<TimeEntry>? _snapshot;   // baseline for the discard-on-close guard
     // Times are tracked separately from the entity so they can start empty —
     // an unset time is "fill me in", not 00:00. Synced into _e once both exist.
     private TimeOnly? _start;
@@ -157,6 +159,7 @@
 
     private int Dur => _e is null || _start is null || _end is null ? 0 : Calc.DurationMinutes(_e);
     private bool Valid => Dur > 0;
+    private bool IsDirty => _e is not null && _snapshot is not null && _snapshot.IsDirty(_e);
 
     // Wide enough for 12-hour locales (e.g. "12:30 pm" + the picker icon in
     // en-AU Chrome) — 108px clipped the AM/PM.
@@ -178,6 +181,8 @@
                 _start = IsNew ? InitialStart : _e.StartTime;
                 _end = IsNew ? InitialEnd : _e.EndTime;
                 SyncTimes();
+                // Baseline AFTER prefilling, so opening with defaults isn't "dirty".
+                _snapshot = new(_e);
             }
         }
     }
@@ -189,7 +194,12 @@
         Notes = s.Notes, ProjectCodeId = s.ProjectCodeId
     };
 
-    private async Task OnClose() => await OnCloseEditor.InvokeAsync();
+    private async Task OnClose()
+    {
+        // Confirm before discarding unsaved edits (Cancel / X / backdrop click).
+        if (IsDirty && !await JS.InvokeAsync<bool>("confirm", "Discard your changes to this entry?")) return;
+        await OnCloseEditor.InvokeAsync();
+    }
 
     private static string OptionLabel(ProjectCode c)
     {

@@ -215,21 +215,17 @@ else
     private async Task Download()
     {
         if (_job is null || _rows.Count == 0) return;
-        try
-        {
-            var bytes = await ExportSvc.ToWorkbookAsync(_rows);
-            var (from, _) = ExportPeriod.Range(_scope, _ref);
-            var slug = System.Text.RegularExpressions.Regex.Replace(_job.Name, "[^a-zA-Z0-9]+", "-").Trim('-');
-            var filename = $"{slug}_{_scope}_{from:yyyy-MM-dd}.xlsx";
-            await Js.InvokeVoidAsync("tsDownload", filename, Convert.ToBase64String(bytes),
-                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-            Toast.Success($"{filename} downloaded");
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Failed to export {JobId}", _job.Id);
-            Toast.Error("Couldn't generate the export — please try again.");
-        }
+        var (from, _) = ExportPeriod.Range(_scope, _ref);
+        var slug = System.Text.RegularExpressions.Regex.Replace(_job.Name, "[^a-zA-Z0-9]+", "-").Trim('-');
+        var filename = $"{slug}_{_scope}_{from:yyyy-MM-dd}.xlsx";
+        await Toast.RunAsync(Logger,
+            async () =>
+            {
+                var bytes = await ExportSvc.ToWorkbookAsync(_rows);
+                await Js.InvokeVoidAsync("tsDownload", filename, Convert.ToBase64String(bytes),
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            },
+            $"{filename} downloaded", "Couldn't generate the export — please try again.", $"export {_job.Id}");
     }
 
     private static string Td(string align = "left") =>

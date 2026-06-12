@@ -393,61 +393,37 @@ else
         _editorOpen = true;
     }
 
-    private async Task SaveEntry(TimeEntry e)
-    {
-        try
-        {
-            await Data.SaveEntryAsync(_job!.Id, e);
-            await LoadWeekAsync();
-            Toast.Success("Entry saved");
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Failed to save entry {EntryId}", e.Id);
-            Toast.Error("Couldn't save the entry — please try again.");
-        }
-    }
+    private async Task SaveEntry(TimeEntry e) =>
+        await Toast.RunAsync(Logger,
+            async () => { await Data.SaveEntryAsync(_job!.Id, e); await LoadWeekAsync(); },
+            "Entry saved", "Couldn't save the entry — please try again.", $"save entry {e.Id}");
+
+    private async Task DeleteEntry(Guid id) =>
+        await Toast.RunAsync(Logger,
+            async () => { await Data.DeleteEntryAsync(_job!.Id, id); await LoadWeekAsync(); },
+            "Entry deleted", "Couldn't delete the entry — please try again.", $"delete entry {id}");
 
     /// <summary>Download the currently viewed week for the selected job as .xlsx.</summary>
     private async Task ExportWeek()
     {
         if (_job is null) return;
-        try
+        var days = CalendarFormat.WeekDates(_week);
+        var entries = await Data.EntriesAsync(_job.Id, days[0], days[6]);
+        var rows = ExportSvc.BuildRows(entries, new ExportContext(_state, _job.DecimalPlaces));
+        if (rows.Count == 0)
         {
-            var days = CalendarFormat.WeekDates(_week);
-            var entries = await Data.EntriesAsync(_job.Id, days[0], days[6]);
-            var rows = ExportSvc.BuildRows(entries, new ExportContext(_state, _job.DecimalPlaces));
-            if (rows.Count == 0)
+            Toast.Error("Nothing to export — this week has no entries.");
+            return;
+        }
+        var slug = System.Text.RegularExpressions.Regex.Replace(_job.Name, "[^a-zA-Z0-9]+", "-").Trim('-');
+        var filename = $"{slug}_Week_{days[0]:yyyy-MM-dd}.xlsx";
+        await Toast.RunAsync(Logger,
+            async () =>
             {
-                Toast.Error("Nothing to export — this week has no entries.");
-                return;
-            }
-            var bytes = await ExportSvc.ToWorkbookAsync(rows);
-            var slug = System.Text.RegularExpressions.Regex.Replace(_job.Name, "[^a-zA-Z0-9]+", "-").Trim('-');
-            var filename = $"{slug}_Week_{days[0]:yyyy-MM-dd}.xlsx";
-            await Js.InvokeVoidAsync("tsDownload", filename, Convert.ToBase64String(bytes),
-                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-            Toast.Success($"{filename} downloaded");
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Failed weekly export for {JobId}", _job.Id);
-            Toast.Error("Couldn't generate the export — please try again.");
-        }
-    }
-
-    private async Task DeleteEntry(Guid id)
-    {
-        try
-        {
-            await Data.DeleteEntryAsync(_job!.Id, id);
-            await LoadWeekAsync();
-            Toast.Success("Entry deleted");
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Failed to delete entry {EntryId}", id);
-            Toast.Error("Couldn't delete the entry — please try again.");
-        }
+                var bytes = await ExportSvc.ToWorkbookAsync(rows);
+                await Js.InvokeVoidAsync("tsDownload", filename, Convert.ToBase64String(bytes),
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            },
+            $"{filename} downloaded", "Couldn't generate the export — please try again.", $"export week {_job.Id}");
     }
 }
