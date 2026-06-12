@@ -1,3 +1,4 @@
+using System.Threading.RateLimiting;
 using Amazon;
 using Amazon.SimpleEmail;
 using Delta;
@@ -5,6 +6,7 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Serilog.Events;
@@ -72,12 +74,20 @@ try
         builder.Services.AddDataProtection().PersistKeysToFileSystem(new(keysPath));
     }
 
-    // Trust the reverse proxy (cloudflared / NPM) for scheme + client IP.
+    // Trust the reverse proxy (cloudflared / NPM) for scheme + client IP, but
+    // ONLY from known private networks — otherwise any peer that can reach the
+    // container could spoof X-Forwarded-For / -Proto. Pin the exact proxy with
+    // FORWARDED_KNOWN_NETWORKS (comma-separated CIDRs); defaults to RFC1918 + loopback.
     builder.Services.Configure<ForwardedHeadersOptions>(options =>
     {
         options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+        options.ForwardLimit = 1;
         options.KnownIPNetworks.Clear();
         options.KnownProxies.Clear();
+        foreach (var net in ProxyNetworks.Resolve(Environment.GetEnvironmentVariable("FORWARDED_KNOWN_NETWORKS")))
+        {
+            options.KnownIPNetworks.Add(net);
+        }
     });
 
     // ---- Email (AWS SES when configured; otherwise a no-op for local dev) ----
@@ -123,6 +133,18 @@ try
     }
     authBuilder.AddIdentityCookies();
 
+    // Harden the auth cookie: always Secure (don't depend on forwarded-proto
+    // timing), HttpOnly, SameSite=Lax (required for the OAuth return), and a
+    // bounded sliding lifetime instead of the 14-day default.
+    builder.Services.ConfigureApplicationCookie(o =>
+    {
+        o.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+        o.Cookie.HttpOnly = true;
+        o.Cookie.SameSite = SameSiteMode.Lax;
+        o.ExpireTimeSpan = TimeSpan.FromHours(8);
+        o.SlidingExpiration = true;
+    });
+
     builder.Services
         .AddIdentityCore<AppUser>(options =>
         {
@@ -149,10 +171,35 @@ try
     builder.Services.AddScoped<IAccountInfo, AccountInfo>();
     builder.Services.AddSingleton<IAssetVersion, AssetVersion>();
 
+    // Throttle the unauthenticated auth POSTs (login / register / forgot- and
+    // reset-password / external-login) per client IP — Identity lockout only
+    // protects a single known account, not credential stuffing or password-
+    // reset email flooding. Keyed on the (now trusted) forwarded client IP.
+    builder.Services.AddRateLimiter(options =>
+    {
+        options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+        options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(ctx =>
+        {
+            if (HttpMethods.IsPost(ctx.Request.Method)
+                && ctx.Request.Path.StartsWithSegments("/Account", StringComparison.OrdinalIgnoreCase))
+            {
+                var ip = ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+                return RateLimitPartition.GetFixedWindowLimiter($"auth:{ip}", _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = 10,
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueLimit = 0,
+                });
+            }
+            return RateLimitPartition.GetNoLimiter("unlimited");
+        });
+    });
+
     var app = builder.Build();
 
     app.UseForwardedHeaders();
     app.UseSerilogRequestLogging();
+    app.UseRateLimiter();
 
     if (!app.Environment.IsDevelopment())
     {

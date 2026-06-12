@@ -27,11 +27,11 @@
 @code {
     [CascadingParameter] private HttpContext? HttpContext { get; set; }
 
-    [Inject] private IAssetVersion Assets { get; set; } = default!;
+    [Inject] private IAssetVersion AssetVer { get; set; } = default!;
 
     private string Nonce => HttpContext?.GetNonce() ?? "";
 
     // Content-hash cache buster: browsers cached ts.js/app.css and kept running
     // stale copies after deploys (e.g. the clipboard fix never reached them).
-    private string Versioned(string asset) => $"{asset}?v={Assets.For(asset)}";
+    private string Versioned(string asset) => $"{asset}?v={AssetVer.For(asset)}";
 }

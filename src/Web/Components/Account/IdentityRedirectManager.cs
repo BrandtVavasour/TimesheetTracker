@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Identity;
+using TimesheetTracker.Web.Services;
 
 namespace TimesheetTracker.Web.Components.Account;
 
@@ -17,15 +18,10 @@ internal sealed class IdentityRedirectManager(NavigationManager navigationManage
 
     public void RedirectTo(string? uri)
     {
-        uri ??= "";
-
-        // Prevent open redirects.
-        if (!Uri.IsWellFormedUriString(uri, UriKind.Relative))
-        {
-            uri = navigationManager.ToBaseRelativePath(uri);
-        }
-
-        navigationManager.NavigateTo(uri);
+        // Resolve to a same-origin local path — blocks open redirects via a
+        // query-supplied ReturnUrl (//evil.com, https://evil.com, backslash
+        // tricks, non-http schemes). Internal same-origin redirects are kept.
+        navigationManager.NavigateTo(SafeRedirect.ToLocal(uri, navigationManager.BaseUri));
     }
 
     public void RedirectTo(string uri, Dictionary<string, object?> queryParameters)

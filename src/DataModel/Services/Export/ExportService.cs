@@ -19,15 +19,21 @@ public class ExportService(ITimeCalculationService calc, IHolidayService holiday
                 BreakMinutes = e.BreakMinutes,
                 DecimalHours = calc.DecimalHours(e, context.DecimalPlaces),
                 HoursMinutes = calc.HoursMinutes(e),
-                ProjectCode = e.ProjectCode?.Code,
+                ProjectCode = Neutralize(e.ProjectCode?.Code),
                 WorkFromHome = e.IsWorkFromHome ? "Yes" : null,
                 PublicHoliday = isHoliday ? holidayName : null,
-                Notes = e.Notes
+                Notes = Neutralize(e.Notes)
             });
         }
 
         return rows;
     }
+
+    // Spreadsheet (CSV/XLSX) formula-injection guard: a user string whose first
+    // character is one Excel treats as a formula trigger is prefixed with an
+    // apostrophe so the consuming spreadsheet renders it as literal text.
+    private static string? Neutralize(string? value) =>
+        !string.IsNullOrEmpty(value) && "=+-@\t\r".IndexOf(value[0]) >= 0 ? "'" + value : value;
 
     public async Task<byte[]> ToWorkbookAsync(IReadOnlyList<TimesheetRow> rows, CancellationToken cancel = default)
     {
