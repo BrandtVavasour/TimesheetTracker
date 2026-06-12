@@ -64,17 +64,15 @@ else
                 </Field>
                 <div style="height:1px;background:var(--line);"></div>
                 <div style="display:flex;flex-direction:column;gap:4px;">
-                    <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:var(--text-soft);">Entries</span><span class="mono" style="font-weight:600;">@_rows.Count</span></div>
+                    <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:var(--text-soft);">Entries</span><span class="mono" style="font-weight:600;">@_entryCount</span></div>
                     <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:var(--text-soft);">Total</span><span class="mono" style="font-weight:600;">@HoursFormat.Hmm(_totalMin)</span></div>
                     <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;"><span style="color:var(--text-soft);">Decimal</span><CopyValue Value="@HoursFormat.Decimal(_totalMin, _job.DecimalPlaces)" Size="sm" Tone="accent" /></div>
                 </div>
-                <div style="display:flex;gap:8px;">
-                    <Btn Variant="primary" Size="lg" Icon="download" Disabled="@(_rows.Count == 0)" OnClick="DownloadXlsx" Style="flex:1;">Excel</Btn>
-                    <Btn Variant="accentSoft" Size="lg" Icon="download" Disabled="@(_rows.Count == 0)" OnClick="DownloadPdf" Style="flex:1;">PDF</Btn>
-                </div>
+                <ExportMenu FullWidth="true" Size="lg" Disabled="@(_entryCount == 0)"
+                            OnExcel="DownloadXlsx" OnPdf="DownloadPdf" />
                 <div style="font-size:11.5px;color:var(--text-mute);display:flex;gap:6px;align-items:flex-start;">
                     <span style="margin-top:1px;flex:none;"><Icon Name="info" Size="13" /></span>
-                    <span>Excel (.xlsx) and PDF both carry the exact columns previewed here.</span>
+                    <span>Choose Excel (.xlsx) or PDF — both carry the exact columns previewed here.</span>
                 </div>
             </div>
         </Card>
@@ -101,7 +99,7 @@ else
                 }
             </div>
             <div style="overflow-x:auto;">
-                @if (_rows.Count == 0)
+                @if (_entryCount == 0)
                 {
                     <div style="padding:60px 20px;text-align:center;color:var(--text-mute);">
                         <div style="margin-bottom:10px;display:flex;justify-content:center;"><Icon Name="calendar" Size="28" /></div>
@@ -163,6 +161,7 @@ else
     private ExportScope _scope = ExportScope.Week;
     private DateOnly _ref;
     private IReadOnlyList<TimesheetRow> _rows = [];
+    private int _entryCount;
     private int _totalMin;
     private bool _loaded;
 
@@ -182,7 +181,9 @@ else
         _state = Data.EffectiveState(_job, _user);
         var (from, to) = ExportPeriod.Range(_scope, _ref);
         var entries = await Data.EntriesAsync(_job.Id, from, to);
-        _rows = ExportSvc.BuildRows(entries, new ExportContext(_state, _job.DecimalPlaces));
+        _entryCount = entries.Count;
+        _rows = ExportSvc.BuildRows(entries, new ExportContext(_state, _job.DecimalPlaces),
+            from, to, _user.ExportIncludeAllDays);
         _totalMin = entries.Sum(e => Math.Max(0, Calc.DurationMinutes(e)));
     }
 
@@ -220,7 +221,7 @@ else
 
     private async Task Download(bool pdf)
     {
-        if (_job is null || _rows.Count == 0) return;
+        if (_job is null || _entryCount == 0) return;
         var (from, _) = ExportPeriod.Range(_scope, _ref);
         var slug = System.Text.RegularExpressions.Regex.Replace(_job.Name, "[^a-zA-Z0-9]+", "-").Trim('-');
         var filename = $"{slug}_{_scope}_{from:yyyy-MM-dd}.{(pdf ? "pdf" : "xlsx")}";

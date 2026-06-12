@@ -25,7 +25,7 @@ public interface ITimesheetData
     Task SaveJobAsync(Job job);
     Task<Job> AddJobAsync();
 
-    Task UpdateUserAsync(string displayName, AustralianState defaultState);
+    Task UpdateUserAsync(string displayName, AustralianState defaultState, bool exportIncludeAllDays);
 
     /// <summary>Effective holiday state for a job (override, else the user's default).</summary>
     AustralianState EffectiveState(Job job, AppUser user);

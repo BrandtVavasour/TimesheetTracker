@@ -8,6 +8,7 @@ public sealed class ProfileForm
 {
     public string DisplayName { get; set; } = "";
     public AustralianState DefaultState { get; set; }
+    public bool ExportIncludeAllDays { get; set; } = true;
 }
 
 public sealed class ProfileFormValidator : AbstractValidator<ProfileForm>

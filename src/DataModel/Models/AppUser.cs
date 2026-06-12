@@ -12,5 +12,9 @@ public class AppUser : IdentityUser<Guid>
     /// window for unverified local accounts.</summary>
     public DateTimeOffset CreatedAt { get; set; }
 
+    /// <summary>When true, exports and the export preview include every calendar
+    /// day in the period (blank on days not worked), not just days with entries.</summary>
+    public bool ExportIncludeAllDays { get; set; } = true;
+
     public ICollection<Job> Jobs { get; set; } = new List<Job>();
 }

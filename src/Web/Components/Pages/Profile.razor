@@ -48,6 +48,16 @@ else
                     </select>
                 </Field>
             </div>
+            <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--line);">
+                <label style="display:flex;align-items:flex-start;gap:11px;cursor:pointer;">
+                    <input type="checkbox" data-testid="include-all-days" checked="@_form.ExportIncludeAllDays"
+                           @onchange="@(e => _form.ExportIncludeAllDays = (bool)e.Value!)" style="margin-top:2px;" />
+                    <span>
+                        <span style="display:block;font-size:13.5px;font-weight:600;">Include every day in exports</span>
+                        <span style="display:block;font-size:12px;color:var(--text-soft);">Show all calendar days in the export preview, Excel and PDF — even days with no times logged.</span>
+                    </span>
+                </label>
+            </div>
             <div style="display:flex;justify-content:flex-end;margin-top:16px;">
                 <Btn Variant="primary" Icon="check" Disabled="@(!IsDirty)" OnClick="Save">Save profile</Btn>
             </div>
@@ -114,7 +124,12 @@ else
     {
         _user = await Data.CurrentUserAsync();
         _methods = await Account.GetMethodsAsync();
-        _form = new ProfileForm { DisplayName = _user.DisplayName, DefaultState = _user.DefaultState };
+        _form = new ProfileForm
+        {
+            DisplayName = _user.DisplayName,
+            DefaultState = _user.DefaultState,
+            ExportIncludeAllDays = _user.ExportIncludeAllDays,
+        };
         _snapshot = new(_form);
     }
 
@@ -142,7 +157,7 @@ else
         var ok = await Toast.RunAsync(Logger,
             async () =>
             {
-                await Data.UpdateUserAsync(_form.DisplayName, _form.DefaultState);
+                await Data.UpdateUserAsync(_form.DisplayName, _form.DefaultState, _form.ExportIncludeAllDays);
                 _user = await Data.CurrentUserAsync();
             },
             "Profile updated", "Couldn't update your profile — please try again.", "save profile");

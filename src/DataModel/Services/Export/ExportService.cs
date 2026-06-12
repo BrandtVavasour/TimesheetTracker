@@ -4,7 +4,8 @@ namespace TimesheetTracker.DataModel.Services.Export;
 
 public class ExportService(ITimeCalculationService calc, IHolidayService holidays) : IExportService
 {
-    public IReadOnlyList<TimesheetRow> BuildRows(IEnumerable<TimeEntry> entries, ExportContext context)
+    public IReadOnlyList<TimesheetRow> BuildRows(IEnumerable<TimeEntry> entries, ExportContext context,
+        DateOnly from = default, DateOnly to = default, bool includeAllDays = false)
     {
         var rows = new List<TimesheetRow>();
         foreach (var e in entries.OrderBy(e => e.WorkDate).ThenBy(e => e.StartTime))
@@ -24,6 +25,31 @@ public class ExportService(ITimeCalculationService calc, IHolidayService holiday
                 PublicHoliday = isHoliday ? holidayName : null,
                 Notes = Neutralize(e.Notes)
             });
+        }
+
+        // Optionally pad every calendar day in [from, to] that has no entry with a
+        // blank row (public-holiday name retained), so an export shows the whole
+        // period rather than only worked days.
+        if (includeAllDays && from != default && from <= to)
+        {
+            var present = rows.Select(r => r.Date).ToHashSet();
+            for (var d = from; d <= to; d = d.AddDays(1))
+            {
+                if (present.Contains(d.ToString("yyyy-MM-dd"))) continue;
+                var isHoliday = holidays.IsPublicHoliday(d, context.State, out var holidayName);
+                rows.Add(new()
+                {
+                    Date = d.ToString("yyyy-MM-dd"),
+                    Day = d.DayOfWeek.ToString(),
+                    Start = "",
+                    End = "",
+                    BreakMinutes = 0,
+                    DecimalHours = 0,
+                    HoursMinutes = "0:00",
+                    PublicHoliday = isHoliday ? holidayName : null,
+                });
+            }
+            rows = rows.OrderBy(r => r.Date).ThenBy(r => r.Start).ToList();
         }
 
         return rows;

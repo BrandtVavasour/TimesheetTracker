@@ -94,7 +94,8 @@ public class PagesRenderTests
         var cut = ctx.Render<Weekly>();
         cut.WaitForState(() => !cut.Markup.Contains("Loading…"), TimeSpan.FromSeconds(10));
 
-        cut.FindAll("button").Single(b => b.TextContent.Trim() == "Excel").Click();
+        cut.FindAll("button").Single(b => b.TextContent.Trim() == "Export").Click();
+        cut.FindAll("button").Single(b => b.TextContent.Contains("Excel")).Click();
 
         cut.WaitForState(
             () => ctx.JSInterop.Invocations.Any(i => i.Identifier == "tsDownload"),
@@ -110,7 +111,8 @@ public class PagesRenderTests
         var cut = ctx.Render<Weekly>();
         cut.WaitForState(() => !cut.Markup.Contains("Loading…"), TimeSpan.FromSeconds(10));
 
-        cut.FindAll("button").Single(b => b.TextContent.Trim() == "PDF").Click();
+        cut.FindAll("button").Single(b => b.TextContent.Trim() == "Export").Click();
+        cut.FindAll("button").Single(b => b.TextContent.Contains("PDF")).Click();
 
         cut.WaitForState(
             () => ctx.JSInterop.Invocations.Any(i => i.Identifier == "tsDownload"),
@@ -190,9 +192,11 @@ public class PagesRenderTests
         cut.Markup.Should().Contain("Worksheet preview");
         cut.Markup.Should().Contain("Period total");
         cut.Markup.Should().Contain("Sprint planning");
-        // Both export formats are offered.
-        cut.FindAll("button").Should().Contain(b => b.TextContent.Trim() == "Excel");
-        cut.FindAll("button").Should().Contain(b => b.TextContent.Trim() == "PDF");
+
+        // One Export button that reveals both formats when opened.
+        cut.FindAll("button").Single(b => b.TextContent.Trim() == "Export").Click();
+        cut.FindAll("button").Should().Contain(b => b.TextContent.Contains("Excel"));
+        cut.FindAll("button").Should().Contain(b => b.TextContent.Contains("PDF"));
     }
 
     [Test]
@@ -202,7 +206,8 @@ public class PagesRenderTests
         var cut = ctx.Render<Export>();
         cut.WaitForState(() => !cut.Markup.Contains("Loading…"), TimeSpan.FromSeconds(10));
 
-        cut.FindAll("button").Single(b => b.TextContent.Trim() == "PDF").Click();
+        cut.FindAll("button").Single(b => b.TextContent.Trim() == "Export").Click();
+        cut.FindAll("button").Single(b => b.TextContent.Contains("PDF")).Click();
 
         cut.WaitForState(
             () => ctx.JSInterop.Invocations.Any(i => i.Identifier == "tsDownload"),
@@ -222,6 +227,25 @@ public class PagesRenderTests
         cut.Markup.Should().Contain("Alex Carter");
         cut.Markup.Should().Contain("Sign-in methods");
         cut.Markup.Should().Contain("Default holiday state");
+    }
+
+    [Test]
+    public void Profile_ToggleIncludeAllDays_PersistsOnSave()
+    {
+        using var ctx = NewSeededContext();
+        var cut = ctx.Render<Profile>();
+        cut.WaitForState(() => !cut.Markup.Contains("Loading…"), TimeSpan.FromSeconds(10));
+
+        // Seeded user defaults to include-all-days = true; turn it off and save.
+        cut.Find("input[data-testid=include-all-days]").Change(false);
+        cut.FindAll("button").Single(b => b.TextContent.Contains("Save profile")).Click();
+
+        cut.WaitForState(() =>
+        {
+            using var scope = ctx.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<TimesheetDbContext>();
+            return db.Users.Single(u => u.Id == SeedData.DemoUserId).ExportIncludeAllDays == false;
+        }, TimeSpan.FromSeconds(10));
     }
 
     // ---- New user with no jobs: every job-backed screen must resolve to an

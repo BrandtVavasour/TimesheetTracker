@@ -147,12 +147,13 @@ public sealed class TimesheetData(IDbContextFactory<TimesheetDbContext> dbFactor
         return job;
     }
 
-    public async Task UpdateUserAsync(string displayName, AustralianState defaultState)
+    public async Task UpdateUserAsync(string displayName, AustralianState defaultState, bool exportIncludeAllDays)
     {
         await using var db = await ScopeAsync();
         var appUser = await db.Users.FirstAsync(u => u.Id == db.CurrentUserId);
         appUser.DisplayName = displayName;
         appUser.DefaultState = defaultState;
+        appUser.ExportIncludeAllDays = exportIncludeAllDays;
         await db.SaveChangesAsync();
     }
 

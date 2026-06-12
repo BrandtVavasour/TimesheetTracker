@@ -31,6 +31,10 @@ Model:
       EmailConfirmed (bool) Required
         Annotations: 
           Npgsql:ValueGenerationStrategy: None
+      ExportIncludeAllDays (bool) Required Sentinel:True ValueGenerated.OnAdd
+        Annotations: 
+          Npgsql:ValueGenerationStrategy: None
+          Relational:DefaultValue: True
       LockoutEnabled (bool) Required
         Annotations: 
           Npgsql:ValueGenerationStrategy: None
@@ -460,6 +464,7 @@ Model:
       DisplayName (string) Required MaxLength(200)
       Email (string) MaxLength(256)
       EmailConfirmed (bool) Required
+      ExportIncludeAllDays (bool) Required Sentinel:True ValueGenerated.OnAdd
       LockoutEnabled (bool) Required
       LockoutEnd (DateTimeOffset?)
       NormalizedEmail (string) Index MaxLength(256)

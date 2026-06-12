@@ -92,10 +92,7 @@ else
                     <button class="ts-iconbtn focusable" @onclick="@(() => ChangeWeek(7))" title="Next week"
                             style="width:32px;height:32px;flex:none;display:inline-flex;align-items:center;justify-content:center;border-radius:var(--r-sm);border:none;background:transparent;color:var(--text-soft);cursor:pointer;"><Icon Name="chevR" Size="17" /></button>
                 </div>
-                <div style="display:flex;gap:6px;flex:none;">
-                    <Btn Variant="outline" Icon="download" OnClick="ExportWeekXlsx" Style="height:38px;">Excel</Btn>
-                    <Btn Variant="outline" Icon="download" OnClick="ExportWeekPdf" Style="height:38px;">PDF</Btn>
-                </div>
+                <ExportMenu Variant="outline" OnExcel="ExportWeekXlsx" OnPdf="ExportWeekPdf" />
             </div>
         </div>
 
@@ -415,12 +412,13 @@ else
         if (_job is null) return;
         var days = CalendarFormat.WeekDates(_week);
         var entries = await Data.EntriesAsync(_job.Id, days[0], days[6]);
-        var rows = ExportSvc.BuildRows(entries, new ExportContext(_state, _job.DecimalPlaces));
-        if (rows.Count == 0)
+        if (entries.Count == 0)
         {
             Toast.Error("Nothing to export — this week has no entries.");
             return;
         }
+        var rows = ExportSvc.BuildRows(entries, new ExportContext(_state, _job.DecimalPlaces),
+            days[0], days[6], _user.ExportIncludeAllDays);
         var slug = System.Text.RegularExpressions.Regex.Replace(_job.Name, "[^a-zA-Z0-9]+", "-").Trim('-');
         var filename = $"{slug}_Week_{days[0]:yyyy-MM-dd}.{(pdf ? "pdf" : "xlsx")}";
         await Toast.RunAsync(Logger,

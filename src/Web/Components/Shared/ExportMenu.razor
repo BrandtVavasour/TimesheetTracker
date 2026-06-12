@@ -1,0 +1,45 @@
+@* A single Export button that opens a small menu to choose the file format. *@
+<div style="position:relative;@(FullWidth ? "" : "display:inline-flex;")">
+    <Btn Variant="@Variant" Size="@Size" Icon="download" Disabled="@Disabled" OnClick="Toggle"
+         Style="@(FullWidth ? "width:100%;" : "")">Export</Btn>
+
+    @if (_open)
+    {
+        @* Invisible backdrop closes the menu on an outside click. *@
+        <div @onclick="Close" style="position:fixed;inset:0;z-index:40;"></div>
+        <div style="position:absolute;top:calc(100% + 6px);@(FullWidth ? "left:0;right:0;" : "right:0;")z-index:41;
+                    background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--r-md);
+                    box-shadow:var(--sh-pop);min-width:190px;overflow:hidden;padding:5px;">
+            <button class="menuitem focusable" @onclick="@(() => Pick(pdf: false))" style="@ItemStyle">
+                <Icon Name="download" Size="15" /><span>Excel <span style="color:var(--text-mute);">(.xlsx)</span></span>
+            </button>
+            <button class="menuitem focusable" @onclick="@(() => Pick(pdf: true))" style="@ItemStyle">
+                <Icon Name="download" Size="15" /><span>PDF <span style="color:var(--text-mute);">(.pdf)</span></span>
+            </button>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public EventCallback OnExcel { get; set; }
+    [Parameter] public EventCallback OnPdf { get; set; }
+    [Parameter] public string Variant { get; set; } = "primary";
+    [Parameter] public string Size { get; set; } = "md";
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public bool FullWidth { get; set; }
+
+    private bool _open;
+
+    private void Toggle() { if (!Disabled) _open = !_open; }
+    private void Close() => _open = false;
+
+    private async Task Pick(bool pdf)
+    {
+        _open = false;
+        if (pdf) await OnPdf.InvokeAsync(); else await OnExcel.InvokeAsync();
+    }
+
+    private const string ItemStyle =
+        "display:flex;align-items:center;gap:9px;width:100%;text-align:left;padding:8px 11px;border:none;" +
+        "background:transparent;cursor:pointer;border-radius:var(--r-sm);font-size:13.5px;font-weight:600;color:var(--text);";
+}

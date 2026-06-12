@@ -4,7 +4,8 @@ namespace TimesheetTracker.DataModel.Services.Export;
 
 public interface IExportService
 {
-    IReadOnlyList<TimesheetRow> BuildRows(IEnumerable<TimeEntry> entries, ExportContext context);
+    IReadOnlyList<TimesheetRow> BuildRows(IEnumerable<TimeEntry> entries, ExportContext context,
+        DateOnly from = default, DateOnly to = default, bool includeAllDays = false);
     Task<byte[]> ToWorkbookAsync(IReadOnlyList<TimesheetRow> rows, CancellationToken cancel = default);
     Task<byte[]> ToPdfAsync(IReadOnlyList<TimesheetRow> rows, ExportDocument document, CancellationToken cancel = default);
 }

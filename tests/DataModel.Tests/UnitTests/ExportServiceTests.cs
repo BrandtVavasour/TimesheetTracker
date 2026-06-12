@@ -139,6 +139,57 @@ public class ExportServiceTests
             [new ExportField("Employee #", "E-1024"), new ExportField("Cost centre", "CC-7")]);
 
     [Test]
+    public void BuildRows_IncludeAllDays_FillsEveryCalendarDayWithBlanks()
+    {
+        var service = new ExportService(new TimeCalculationService(), new HolidayService());
+        var entries = new[]
+        {
+            new TimeEntry { WorkDate = new(2026, 6, 9), StartTime = new(9, 0), EndTime = new(17, 0), BreakMinutes = 30 },
+        };
+
+        var rows = service.BuildRows(entries, new(AustralianState.NSW, 2),
+            from: new(2026, 6, 8), to: new(2026, 6, 14), includeAllDays: true); // Mon–Sun
+
+        rows.Should().HaveCount(7);
+        rows.Select(r => r.Date).Should().BeInAscendingOrder();
+        rows[0].Date.Should().Be("2026-06-08");
+        rows[^1].Date.Should().Be("2026-06-14");
+
+        // The worked day keeps its real times.
+        rows.Single(r => r.Date == "2026-06-09").Start.Should().Be("09:00");
+        // A non-worked day (Saturday) is present but blank.
+        var sat = rows.Single(r => r.Date == "2026-06-13");
+        sat.Start.Should().BeEmpty();
+        sat.End.Should().BeEmpty();
+        sat.DecimalHours.Should().Be(0);
+    }
+
+    [Test]
+    public void BuildRows_IncludeAllDays_KeepsHolidayNameOnAnEmptyDay()
+    {
+        var service = new ExportService(new TimeCalculationService(), new HolidayService());
+        // 8 Jun 2026 is a NSW public holiday with no entry; the worked day is the 9th.
+        var rows = service.BuildRows(
+            new[] { new TimeEntry { WorkDate = new(2026, 6, 9), StartTime = new(9, 0), EndTime = new(17, 0) } },
+            new(AustralianState.NSW, 2), from: new(2026, 6, 8), to: new(2026, 6, 9), includeAllDays: true);
+
+        var holidayDay = rows.Single(r => r.Date == "2026-06-08");
+        holidayDay.Start.Should().BeEmpty();
+        holidayDay.PublicHoliday.Should().NotBeNullOrEmpty();
+    }
+
+    [Test]
+    public void BuildRows_WithoutIncludeAllDays_ReturnsOnlyEntryRows()
+    {
+        var service = new ExportService(new TimeCalculationService(), new HolidayService());
+        var rows = service.BuildRows(
+            new[] { new TimeEntry { WorkDate = new(2026, 6, 9), StartTime = new(9, 0), EndTime = new(17, 0) } },
+            new(AustralianState.NSW, 2), from: new(2026, 6, 8), to: new(2026, 6, 14), includeAllDays: false);
+
+        rows.Should().HaveCount(1);
+    }
+
+    [Test]
     public async Task ToPdfAsync_ProducesNonEmptyPdf()
     {
         var service = new ExportService(new TimeCalculationService(), new HolidayService());
