@@ -6,13 +6,13 @@ namespace Web.Tests;
 [TestFixture]
 public class ProfileFormValidatorTests
 {
-    private readonly ProfileFormValidator _validator = new();
+    private readonly ProfileFormValidator validator = new();
 
     [Test]
     public void Valid_Passes()
     {
         var form = new ProfileForm { DisplayName = "Alex Carter", DefaultState = AustralianState.NSW };
-        _validator.Validate(form).IsValid.Should().BeTrue();
+        validator.Validate(form).IsValid.Should().BeTrue();
     }
 
     [TestCase("")]
@@ -20,13 +20,13 @@ public class ProfileFormValidatorTests
     public void BlankDisplayName_Fails(string name)
     {
         var form = new ProfileForm { DisplayName = name };
-        _validator.Validate(form).IsValid.Should().BeFalse();
+        validator.Validate(form).IsValid.Should().BeFalse();
     }
 
     [Test]
     public void DisplayNameTooLong_Fails()
     {
-        var form = new ProfileForm { DisplayName = new string('x', 101) };
-        _validator.Validate(form).IsValid.Should().BeFalse();
+        var form = new ProfileForm { DisplayName = new('x', 101) };
+        validator.Validate(form).IsValid.Should().BeFalse();
     }
 }

@@ -13,24 +13,24 @@ namespace Web.Tests;
 [TestFixture]
 public class AssetVersionTests
 {
-    private string _root = null!;
+    private string root = null!;
 
     [SetUp]
     public void SetUp()
     {
-        _root = Path.Combine(Path.GetTempPath(), "assetver-" + Guid.NewGuid());
-        Directory.CreateDirectory(_root);
+        root = Path.Combine(Path.GetTempPath(), "assetver-" + Guid.NewGuid());
+        Directory.CreateDirectory(root);
     }
 
     [TearDown]
-    public void TearDown() => Directory.Delete(_root, recursive: true);
+    public void TearDown() => Directory.Delete(root, recursive: true);
 
-    private AssetVersion NewSut() => new(new StubEnv(_root));
+    private AssetVersion NewSut() => new(new StubEnv(root));
 
     [Test]
     public void SameContent_GivesStableVersion()
     {
-        File.WriteAllText(Path.Combine(_root, "ts.js"), "window.x = 1;");
+        File.WriteAllText(Path.Combine(root, "ts.js"), "window.x = 1;");
         var sut = NewSut();
 
         var v1 = sut.For("ts.js");
@@ -43,20 +43,18 @@ public class AssetVersionTests
     [Test]
     public void DifferentContent_GivesDifferentVersion()
     {
-        File.WriteAllText(Path.Combine(_root, "ts.js"), "window.x = 1;");
+        File.WriteAllText(Path.Combine(root, "ts.js"), "window.x = 1;");
         var v1 = NewSut().For("ts.js");
 
-        File.WriteAllText(Path.Combine(_root, "ts.js"), "window.x = 2;");
+        File.WriteAllText(Path.Combine(root, "ts.js"), "window.x = 2;");
         var v2 = NewSut().For("ts.js");
 
         v2.Should().NotBe(v1);
     }
 
     [Test]
-    public void MissingFile_ReturnsFallback()
-    {
+    public void MissingFile_ReturnsFallback() =>
         NewSut().For("nope.js").Should().Be("0");
-    }
 
     private sealed class StubEnv(string root) : IWebHostEnvironment
     {

@@ -57,7 +57,7 @@ public sealed class AdminService(
             u.Email ?? "—",
             u.EmailConfirmed,
             adminIds.Contains(u.Id),
-            IsLockedOut: u.LockoutEnabled && u.LockoutEnd is { } end && end > now,
+            IsLockedOut: u is { LockoutEnabled: true, LockoutEnd: { } end } && end > now,
             u.LockoutEnd,
             u.AccessFailedCount,
             maxFailed,

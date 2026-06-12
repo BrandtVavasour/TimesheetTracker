@@ -9,16 +9,12 @@ public class AccountGraceTests
     private static readonly TimeSpan Period = AccountGrace.Period;
 
     [Test]
-    public void VerifiedAccount_IsNeverBlocked_EvenLongAfterSignup()
-    {
+    public void VerifiedAccount_IsNeverBlocked_EvenLongAfterSignup() =>
         AccountGrace.IsBlocked(emailConfirmed: true, Created, Created.AddYears(1)).Should().BeFalse();
-    }
 
     [Test]
-    public void Unverified_WithinWindow_IsNotBlocked()
-    {
+    public void Unverified_WithinWindow_IsNotBlocked() =>
         AccountGrace.IsBlocked(false, Created, Created + Period - TimeSpan.FromHours(1)).Should().BeFalse();
-    }
 
     [Test]
     public void Unverified_AtOrPastWindow_IsBlocked()
@@ -37,8 +33,6 @@ public class AccountGraceTests
     }
 
     [Test]
-    public void Expiry_IsOnePeriodAfterCreation()
-    {
+    public void Expiry_IsOnePeriodAfterCreation() =>
         AccountGrace.Expiry(Created).Should().Be(Created + Period);
-    }
 }

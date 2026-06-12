@@ -103,7 +103,8 @@ public class ExportServiceTests
             new TimeEntry
             {
                 WorkDate = new(2026, 6, 11), StartTime = new(9, 0), EndTime = new(17, 0),
-                BreakMinutes = 0, Notes = "+1+1", ProjectCode = new ProjectCode { Code = "PRJ-1" },
+                BreakMinutes = 0, Notes = "+1+1", ProjectCode = new()
+                    { Code = "PRJ-1" },
             },
         };
 
@@ -136,7 +137,7 @@ public class ExportServiceTests
 
     private static ExportDocument SampleDoc(IReadOnlyList<TimesheetRow> rows, int totalMinutes = 450) =>
         new("Acme Consulting", "Jane Developer", AustralianState.NSW, "8 – 14 Jun 2026", 2, totalMinutes,
-            [new ExportField("Employee #", "E-1024"), new ExportField("Cost centre", "CC-7")]);
+            [new("Employee #", "E-1024"), new("Cost centre", "CC-7")]);
 
     [Test]
     public void BuildRows_IncludeAllDays_FillsEveryCalendarDayWithBlanks()
@@ -194,8 +195,8 @@ public class ExportServiceTests
     {
         var service = new ExportService(new TimeCalculationService(), new HolidayService());
         var rows = service.BuildRows(
-            [new TimeEntry
-                { WorkDate = new(2026, 12, 25), StartTime = new(9, 0), EndTime = new(17, 0),
+            [new()
+            { WorkDate = new(2026, 12, 25), StartTime = new(9, 0), EndTime = new(17, 0),
                   BreakMinutes = 30, IsWorkFromHome = true, Notes = "Worked the holiday" }],
             new(AustralianState.NSW, 2));
 

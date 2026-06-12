@@ -12,11 +12,11 @@ namespace TimesheetTracker.DataModel.Services;
 /// </summary>
 public class HolidayService : IHolidayService
 {
-    private readonly ConcurrentDictionary<(DateOnly Date, AustralianState State), (bool IsHoliday, string? Name)> _cache = new();
+    private readonly ConcurrentDictionary<(DateOnly Date, AustralianState State), (bool IsHoliday, string? Name)> cache = new();
 
     public bool IsPublicHoliday(DateOnly date, AustralianState state, out string? name)
     {
-        var result = _cache.GetOrAdd((date, state), key =>
+        var result = cache.GetOrAdd((date, state), key =>
         {
             var isHoliday = Holidays.IsHoliday(key.Date, key.State.ToHolidayState(), out var holidayName);
             return (isHoliday, holidayName);

@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Serilog.Events;
@@ -205,7 +204,7 @@ try
                 // IP for everyone and 429 legitimate sign-ups. The limit is a
                 // generous backstop — a human auth flow is a handful of POSTs;
                 // Cloudflare's WAF is the primary volumetric defence.
-                return RateLimitPartition.GetFixedWindowLimiter($"auth:{ClientIp.For(ctx)}", _ => new FixedWindowRateLimiterOptions
+                return RateLimitPartition.GetFixedWindowLimiter($"auth:{ClientIp.For(ctx)}", _ => new()
                 {
                     PermitLimit = 20,
                     Window = TimeSpan.FromMinutes(1),

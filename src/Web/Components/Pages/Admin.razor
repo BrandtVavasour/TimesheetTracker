@@ -1,7 +1,6 @@
 @page "/admin"
 @rendermode InteractiveServer
 @attribute [Authorize(Roles = "Admin")]
-@using TimesheetTracker.Web.Services
 @inject IAdminService AdminSvc
 @inject IToastService Toast
 @inject ILogger<Admin> Logger
@@ -119,7 +118,7 @@ else
         style="@HeadStyle(left)cursor:pointer;user-select:none;" @onclick="@(() => SetSort(key))" title="Sort by @label">
         <span style="display:inline-flex;align-items:center;gap:4px;@(left ? "" : "justify-content:flex-end;")">
             @label
-            <span style="font-size:9px;color:@(_sort == key ? "var(--accent)" : "var(--text-mute)");">@(_sort == key ? (_asc ? "▲" : "▼") : "↕")</span>
+            <span style="font-size:9px;color:@(_sort == key ? "var(--accent)" : "var(--text-mute)");">@(_sort == key ? _asc ? "▲" : "▼" : "↕")</span>
         </span>
     </th>;
 

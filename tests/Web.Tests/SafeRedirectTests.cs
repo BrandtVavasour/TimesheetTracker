@@ -17,10 +17,8 @@ public class SafeRedirectTests
     [TestCase("/", "/")]
     [TestCase("Account/RegisterConfirmation?email=a%40b.com", "/Account/RegisterConfirmation?email=a%40b.com")]
     [TestCase("https://timesheet.jabtech.com.au/export", "/export")]   // same-origin absolute → relative
-    public void Local_AndSameOrigin_Preserved(string input, string expected)
-    {
+    public void Local_AndSameOrigin_Preserved(string input, string expected) =>
         SafeRedirect.ToLocal(input, Base).Should().Be(expected);
-    }
 
     [TestCase("//evil.example.com")]                 // protocol-relative (the confirmed exploit)
     [TestCase("//evil.example.com/path")]
@@ -30,16 +28,12 @@ public class SafeRedirectTests
     [TestCase("\\\\evil.example.com")]
     [TestCase("javascript:alert(1)")]
     [TestCase("https://timesheet.jabtech.com.au.evil.com/x")] // look-alike host
-    public void OffOrigin_OrDangerous_RewrittenToRoot(string input)
-    {
+    public void OffOrigin_OrDangerous_RewrittenToRoot(string input) =>
         SafeRedirect.ToLocal(input, Base).Should().Be("/");
-    }
 
     [TestCase(null)]
     [TestCase("")]
     [TestCase("   ")]
-    public void NullOrBlank_GivesRoot(string? input)
-    {
+    public void NullOrBlank_GivesRoot(string? input) =>
         SafeRedirect.ToLocal(input, Base).Should().Be("/");
-    }
 }

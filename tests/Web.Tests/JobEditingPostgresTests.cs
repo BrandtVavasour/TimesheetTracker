@@ -42,7 +42,7 @@ public abstract class JobEditingFlowTests
 
         var draft = (await data.JobAsync(job.Id))!;
         // Exactly what Jobs.razor AddField does: page-generated Id, JobId left unset.
-        draft.CustomFields.Add(new JobCustomField
+        draft.CustomFields.Add(new()
         {
             Id = Guid.NewGuid(), Name = "Employee #", Value = "40192",
             ShowOnTimesheet = true, DisplayOrder = 0,
@@ -62,7 +62,7 @@ public abstract class JobEditingFlowTests
 
         var draft = (await data.JobAsync(job.Id))!;
         // Exactly what Jobs.razor AddCode does.
-        draft.ProjectCodes.Add(new ProjectCode
+        draft.ProjectCodes.Add(new()
         {
             Id = Guid.NewGuid(), Code = "PC-100", Description = "Main project",
             IsActive = true, DisplayOrder = 0,
@@ -81,7 +81,7 @@ public abstract class JobEditingFlowTests
         var job = await data.AddJobAsync();
 
         var draft = (await data.JobAsync(job.Id))!;
-        draft.CustomFields.Add(new JobCustomField
+        draft.CustomFields.Add(new()
         {
             Id = Guid.NewGuid(), Name = "Employee #", Value = "1", DisplayOrder = 0,
         });
@@ -89,7 +89,7 @@ public abstract class JobEditingFlowTests
 
         // The page keeps the same draft after Save; user edits and saves again.
         draft.CustomFields.First().Value = "2";
-        draft.CustomFields.Add(new JobCustomField
+        draft.CustomFields.Add(new()
         {
             Id = Guid.NewGuid(), Name = "Cost centre", Value = "CC-9", DisplayOrder = 1,
         });
@@ -112,8 +112,8 @@ public abstract class JobEditingFlowTests
         await data.SaveJobAsync(draft);
 
         var saved = (await data.JobAsync(job.Id))!;
-        saved.DefaultStartTime.Should().Be(new TimeOnly(8, 30));
-        saved.DefaultEndTime.Should().Be(new TimeOnly(17, 0));
+        saved.DefaultStartTime.Should().Be(new(8, 30));
+        saved.DefaultEndTime.Should().Be(new(17, 0));
 
         // Clearing them must persist too (back to "no default").
         saved.DefaultStartTime = null;
@@ -160,7 +160,7 @@ public abstract class JobEditingFlowTests
         var job = await data.AddJobAsync();
 
         var draft = (await data.JobAsync(job.Id))!;
-        draft.CustomFields.Add(new JobCustomField
+        draft.CustomFields.Add(new()
         {
             Id = Guid.NewGuid(), Name = "Temp", Value = "x", DisplayOrder = 0,
         });
@@ -178,7 +178,7 @@ public abstract class JobEditingFlowTests
         var userId = Guid.NewGuid();
         await using (var db = new TimesheetDbContext(options))
         {
-            db.Users.Add(new AppUser
+            db.Users.Add(new()
             {
                 Id = userId,
                 UserName = $"{userId:N}@example.com",
@@ -188,7 +188,7 @@ public abstract class JobEditingFlowTests
             });
             await db.SaveChangesAsync();
         }
-        return new TimesheetData(new OptionsDbFactory(options), new StubCurrentUser(userId), new StubClock(new(2026, 6, 11)));
+        return new(new OptionsDbFactory(options), new StubCurrentUser(userId), new StubClock(new(2026, 6, 11)));
     }
 
     private sealed class OptionsDbFactory(DbContextOptions<TimesheetDbContext> options) : IDbContextFactory<TimesheetDbContext>
@@ -211,15 +211,15 @@ public abstract class JobEditingFlowTests
 [TestFixture]
 public class JobEditingInMemoryTests : JobEditingFlowTests
 {
-    private DbContextOptions<TimesheetDbContext> _options = null!;
+    private DbContextOptions<TimesheetDbContext> options = null!;
 
     [OneTimeSetUp]
     public void OneTimeSetUp() =>
-        _options = new DbContextOptionsBuilder<TimesheetDbContext>()
+        options = new DbContextOptionsBuilder<TimesheetDbContext>()
             .UseInMemoryDatabase("job-editing-" + Guid.NewGuid())
             .Options;
 
-    protected override Task<TimesheetData> NewUserDataAsync() => NewUserDataAsync(_options);
+    protected override Task<TimesheetData> NewUserDataAsync() => NewUserDataAsync(options);
 }
 
 /// <summary>The authoritative reproduction on real Postgres (matches production).</summary>
@@ -228,23 +228,23 @@ public class JobEditingInMemoryTests : JobEditingFlowTests
 [Category("Docker")]
 public class JobEditingPostgresTests : JobEditingFlowTests
 {
-    private PostgreSqlContainer _container = null!;
-    private DbContextOptions<TimesheetDbContext> _options = null!;
+    private PostgreSqlContainer container = null!;
+    private DbContextOptions<TimesheetDbContext> options = null!;
 
     [OneTimeSetUp]
     public async Task OneTimeSetUp()
     {
-        _container = new PostgreSqlBuilder("postgres:17").Build();
-        await _container.StartAsync();
-        _options = new DbContextOptionsBuilder<TimesheetDbContext>()
-            .UseNpgsql(_container.GetConnectionString())
+        container = new PostgreSqlBuilder("postgres:17").Build();
+        await container.StartAsync();
+        options = new DbContextOptionsBuilder<TimesheetDbContext>()
+            .UseNpgsql(container.GetConnectionString())
             .Options;
-        await using var db = new TimesheetDbContext(_options);
+        await using var db = new TimesheetDbContext(options);
         await db.Database.MigrateAsync();
     }
 
     [OneTimeTearDown]
-    public async Task OneTimeTearDown() => await _container.DisposeAsync();
+    public async Task OneTimeTearDown() => await container.DisposeAsync();
 
-    protected override Task<TimesheetData> NewUserDataAsync() => NewUserDataAsync(_options);
+    protected override Task<TimesheetData> NewUserDataAsync() => NewUserDataAsync(options);
 }

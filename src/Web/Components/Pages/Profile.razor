@@ -1,14 +1,13 @@
 @page "/profile"
 @rendermode InteractiveServer
 @using FluentValidation
-@using Microsoft.AspNetCore.Components.Routing
 @using TimesheetTracker.Web.Validation
 @inject ITimesheetData Data
 @inject IToastService Toast
 @inject ILogger<Profile> Logger
 @inject IAccountInfo Account
 @inject IValidator<ProfileForm> Validator
-@inject IJSRuntime JS
+@inject IJSRuntime Js
 
 <PageHead Title="Profile" Subtitle="Your details and sign-in methods." />
 
@@ -134,7 +133,7 @@ else
     }
 
     private async Task<bool> ConfirmDiscardAsync() =>
-        await JS.InvokeAsync<bool>("confirm", "You have unsaved changes. Discard them?");
+        await Js.InvokeAsync<bool>("confirm", "You have unsaved changes. Discard them?");
 
     private async Task GuardNavAsync(LocationChangingContext context)
     {

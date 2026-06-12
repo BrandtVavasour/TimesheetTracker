@@ -84,13 +84,13 @@ internal sealed class IdentityTestHost : IDisposable
             db.Jobs.Add(job);
             for (var e = 0; e < entriesPerJob; e++)
             {
-                db.TimeEntries.Add(new TimeEntry
+                db.TimeEntries.Add(new()
                 {
                     Id = Guid.NewGuid(),
                     JobId = job.Id,
                     WorkDate = new DateOnly(2026, 6, 1).AddDays(e),
-                    StartTime = new TimeOnly(9, 0),
-                    EndTime = new TimeOnly(17, 0),
+                    StartTime = new(9, 0),
+                    EndTime = new(17, 0),
                 });
             }
         }

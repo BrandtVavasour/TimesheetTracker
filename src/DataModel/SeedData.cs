@@ -41,7 +41,7 @@ public static class SeedData
         NormalizedEmail = "ALEX@EXAMPLE.COM",
         EmailConfirmed = true,
         DefaultState = AustralianState.NSW,
-        CreatedAt = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero),
+        CreatedAt = new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero),
         SecurityStamp = Guid.NewGuid().ToString()
     };
 

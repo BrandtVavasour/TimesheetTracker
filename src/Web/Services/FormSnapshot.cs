@@ -17,15 +17,15 @@ public sealed class FormSnapshot<T>
         ReferenceHandler = ReferenceHandler.IgnoreCycles,
     };
 
-    private string _baseline;
+    private string baseline;
 
-    public FormSnapshot(T model) => _baseline = Serialize(model);
+    public FormSnapshot(T model) => baseline = Serialize(model);
 
     /// <summary>True when the model differs from the last captured baseline.</summary>
-    public bool IsDirty(T model) => Serialize(model) != _baseline;
+    public bool IsDirty(T model) => Serialize(model) != baseline;
 
     /// <summary>Re-baseline to the current state (e.g. after a successful save).</summary>
-    public void Reset(T model) => _baseline = Serialize(model);
+    public void Reset(T model) => baseline = Serialize(model);
 
     private static string Serialize(T model) => JsonSerializer.Serialize(model, Options);
 }

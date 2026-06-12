@@ -2,8 +2,6 @@ using AngleSharp.Dom;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using TimesheetTracker.DataModel;
-using TimesheetTracker.DataModel.Services;
-using TimesheetTracker.DataModel.Validation;
 using TimesheetTracker.Web.Components.Pages;
 using TimesheetTracker.Web.Services;
 using TimesheetTracker.Web.Validation;

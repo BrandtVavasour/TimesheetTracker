@@ -13,10 +13,8 @@ public sealed class ProfileForm
 
 public sealed class ProfileFormValidator : AbstractValidator<ProfileForm>
 {
-    public ProfileFormValidator()
-    {
+    public ProfileFormValidator() =>
         RuleFor(p => p.DisplayName)
             .NotEmpty().WithMessage("Enter a display name.")
             .MaximumLength(100);
-    }
 }

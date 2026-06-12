@@ -15,10 +15,8 @@ public class HiddenPathTests
     [TestCase("/.well-known/../.env")]
     [TestCase("/config/.env")]
     [TestCase("/.DS_Store")]
-    public void HiddenSegments_AreBlocked(string path)
-    {
+    public void HiddenSegments_AreBlocked(string path) =>
         HiddenPath.IsBlocked(path).Should().BeTrue();
-    }
 
     [TestCase("/")]
     [TestCase("/jobs")]
@@ -28,8 +26,6 @@ public class HiddenPathTests
     [TestCase("/Account/Login")]
     [TestCase("/health/live")]
     [TestCase("")]
-    public void NormalPaths_AreAllowed(string path)
-    {
+    public void NormalPaths_AreAllowed(string path) =>
         HiddenPath.IsBlocked(path).Should().BeFalse();
-    }
 }

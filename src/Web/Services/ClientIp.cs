@@ -1,5 +1,3 @@
-using Microsoft.AspNetCore.Http;
-
 namespace TimesheetTracker.Web.Services;
 
 /// <summary>

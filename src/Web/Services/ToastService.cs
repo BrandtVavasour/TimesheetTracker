@@ -19,12 +19,12 @@ public interface IToastService
 
 public sealed class ToastService : IToastService
 {
-    private readonly object _gate = new();
-    private readonly List<ToastItem> _items = [];
+    private readonly object gate = new();
+    private readonly List<ToastItem> items = [];
 
     public IReadOnlyList<ToastItem> Items
     {
-        get { lock (_gate) return [.. _items]; }
+        get { lock (gate) return [.. items]; }
     }
 
     public event Action? Changed;
@@ -35,9 +35,9 @@ public sealed class ToastService : IToastService
 
     public void Dismiss(Guid id)
     {
-        lock (_gate)
+        lock (gate)
         {
-            if (_items.RemoveAll(t => t.Id == id) == 0) return;
+            if (items.RemoveAll(t => t.Id == id) == 0) return;
         }
         Changed?.Invoke();
     }
@@ -45,7 +45,7 @@ public sealed class ToastService : IToastService
     private void Show(string message, string tone, int durationMs)
     {
         var item = new ToastItem(Guid.NewGuid(), message, tone);
-        lock (_gate) _items.Add(item);
+        lock (gate) items.Add(item);
         Changed?.Invoke();
         _ = AutoDismissAsync(item.Id, durationMs);
     }

@@ -1,12 +1,11 @@
 @page "/jobs"
 @rendermode InteractiveServer
 @using FluentValidation
-@using Microsoft.AspNetCore.Components.Routing
 @inject ITimesheetData Data
 @inject IToastService Toast
 @inject ILogger<Jobs> Logger
 @inject IValidator<Job> Validator
-@inject IJSRuntime JS
+@inject IJSRuntime Js
 
 <PageHead Title="Jobs" Subtitle="Settings, custom fields, and project codes — per job." />
 
@@ -71,7 +70,7 @@ else
                                 <span style="font-size:12px;color:var(--danger);">@err</span>
                             }
                         </Field>
-                        <Field Label="Holiday state" Hint="@($"Effective: {(_job.StateOverride?.ToString() ?? _user.DefaultState.ToString())}")">
+                        <Field Label="Holiday state" Hint="@($"Effective: {_job.StateOverride?.ToString() ?? _user.DefaultState.ToString()}")">
                             <select class="input" value="@(_job.StateOverride?.ToString() ?? "")" @onchange="OnStateChange">
                                 <option value="">Use my default (@_user.DefaultState)</option>
                                 @foreach (var s in Enum.GetValues<AustralianState>())
@@ -253,7 +252,7 @@ else
     }
 
     private async Task<bool> ConfirmDiscardAsync() =>
-        await JS.InvokeAsync<bool>("confirm", "You have unsaved changes. Discard them?");
+        await Js.InvokeAsync<bool>("confirm", "You have unsaved changes. Discard them?");
 
     private async Task GuardNavAsync(LocationChangingContext context)
     {

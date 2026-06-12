@@ -16,8 +16,8 @@ public static class EmailTemplate
     public const string AppName = "Timesheet Tracker";
 
     private static readonly Assembly Asm = typeof(EmailTemplate).Assembly;
-    private static string? _shell;
-    private static string? _button;
+    private static string? shell;
+    private static string? button;
 
     /// <summary>
     /// Full HTML email: heading + subheading, with EITHER an action button
@@ -50,8 +50,8 @@ public static class EmailTemplate
         </tr></table>
         """;
 
-    private static string Shell() => _shell ??= Load("EmailTemplate.html");
-    private static string ButtonShell() => _button ??= Load("ButtonTemplate.html");
+    private static string Shell() => shell ??= Load("EmailTemplate.html");
+    private static string ButtonShell() => button ??= Load("ButtonTemplate.html");
 
     private static string Load(string file)
     {
@@ -89,17 +89,17 @@ public static class EmailMessages
     {
         var html = EmailTemplate.Render(heading, subheading, buttonText, url, code);
         var text = PlainText(heading, subheading, buttonText, url, code);
-        return new EmailMessage(subject, html, text);
+        return new(subject, html, text);
     }
 
     private static string PlainText(string heading, string body, string? action, string? url, string? code)
     {
         // The link arrives HTML-encoded (for the href); decode it for plain text.
-        var action_line = code is not null ? $"Your code: {code}"
+        var actionLine = code is not null ? $"Your code: {code}"
             : url is not null ? $"{action}: {WebUtility.HtmlDecode(url)}"
             : null;
 
-        var parts = new[] { heading, body, action_line, $"— {EmailTemplate.AppName}" }
+        var parts = new[] { heading, body, actionLine, $"— {EmailTemplate.AppName}" }
             .Where(s => !string.IsNullOrEmpty(s));
         return string.Join("\n\n", parts);
     }

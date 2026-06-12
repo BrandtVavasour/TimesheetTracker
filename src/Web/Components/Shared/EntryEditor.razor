@@ -1,5 +1,5 @@
 @inject ITimeCalculationService Calc
-@inject IJSRuntime JS
+@inject IJSRuntime Js
 
 @if (Open && _e is not null)
 {
@@ -197,7 +197,7 @@
     private async Task OnClose()
     {
         // Confirm before discarding unsaved edits (Cancel / X / backdrop click).
-        if (IsDirty && !await JS.InvokeAsync<bool>("confirm", "Discard your changes to this entry?")) return;
+        if (IsDirty && !await Js.InvokeAsync<bool>("confirm", "Discard your changes to this entry?")) return;
         await OnCloseEditor.InvokeAsync();
     }
 

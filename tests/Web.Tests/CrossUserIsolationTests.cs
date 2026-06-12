@@ -15,44 +15,45 @@ namespace Web.Tests;
 [TestFixture]
 public class CrossUserIsolationTests
 {
-    private DbContextOptions<TimesheetDbContext> _options = null!;
-    private Guid _userA;
-    private Guid _userB;
+    private DbContextOptions<TimesheetDbContext> options = null!;
+    private Guid userA;
+    private Guid userB;
 
     [SetUp]
     public async Task SetUp()
     {
-        _options = new DbContextOptionsBuilder<TimesheetDbContext>()
+        options = new DbContextOptionsBuilder<TimesheetDbContext>()
             .UseInMemoryDatabase("xuser-" + Guid.NewGuid())
             .Options;
-        _userA = await CreateUser("a@example.com");
-        _userB = await CreateUser("b@example.com");
+        userA = await CreateUser("a@example.com");
+        userB = await CreateUser("b@example.com");
     }
 
     private async Task<Guid> CreateUser(string email)
     {
         var id = Guid.NewGuid();
-        await using var db = new TimesheetDbContext(_options);
-        db.Users.Add(new AppUser { Id = id, UserName = email, Email = email, DisplayName = email, DefaultState = AustralianState.NSW });
+        await using var db = new TimesheetDbContext(options);
+        db.Users.Add(new()
+            { Id = id, UserName = email, Email = email, DisplayName = email, DefaultState = AustralianState.NSW });
         await db.SaveChangesAsync();
         return id;
     }
 
     private TimesheetData DataFor(Guid userId) =>
-        new(new Factory(_options), new Stub(userId), new Clock());
+        new(new Factory(options), new Stub(userId), new Clock());
 
     [Test]
     public async Task UserB_CannotSeeOrTouch_UserAsJobAndEntries()
     {
-        var a = DataFor(_userA);
-        var b = DataFor(_userB);
+        var a = DataFor(userA);
+        var b = DataFor(userB);
 
         // User A sets up a job with an entry.
         var jobA = await a.AddJobAsync();
-        var jobA_clone = await a.JobAsync(jobA.Id);
-        jobA_clone!.Name = "A's secret client";
-        await a.SaveJobAsync(jobA_clone);
-        await a.SaveEntryAsync(jobA.Id, new TimeEntry
+        var jobAClone = await a.JobAsync(jobA.Id);
+        jobAClone!.Name = "A's secret client";
+        await a.SaveJobAsync(jobAClone);
+        await a.SaveEntryAsync(jobA.Id, new()
         {
             Id = Guid.NewGuid(), WorkDate = new(2026, 6, 10),
             StartTime = new(9, 0), EndTime = new(17, 0), BreakMinutes = 30, Notes = "A's private notes",
@@ -67,13 +68,14 @@ public class CrossUserIsolationTests
 
         // --- WRITE: B's attempts to mutate A's data are silent no-ops ---
         // Try to add an entry onto A's job.
-        await b.SaveEntryAsync(jobA.Id, new TimeEntry
+        await b.SaveEntryAsync(jobA.Id, new()
         {
             Id = Guid.NewGuid(), WorkDate = new(2026, 6, 11),
             StartTime = new(0, 0), EndTime = new(23, 0), BreakMinutes = 0, Notes = "B injected this",
         });
         // Try to rename A's job.
-        await b.SaveJobAsync(new Job { Id = jobA.Id, Name = "B hijacked this" });
+        await b.SaveJobAsync(new()
+            { Id = jobA.Id, Name = "B hijacked this" });
         // Try to delete A's entry.
         await b.DeleteEntryAsync(jobA.Id, aEntry.Id);
 

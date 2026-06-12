@@ -38,7 +38,7 @@ public static class AdminBootstrap
 
         if (!await roles.RoleExistsAsync(AdminRole))
         {
-            await roles.CreateAsync(new IdentityRole<Guid>(AdminRole));
+            await roles.CreateAsync(new(AdminRole));
             logger.LogInformation("Created {Role} role.", AdminRole);
         }
 

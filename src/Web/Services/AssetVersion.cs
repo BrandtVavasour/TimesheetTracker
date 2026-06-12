@@ -17,9 +17,9 @@ public interface IAssetVersion
 public sealed class AssetVersion(IWebHostEnvironment env) : IAssetVersion
 {
     // Hash once per asset per app lifetime — content only changes with a deploy.
-    private readonly ConcurrentDictionary<string, string> _cache = new();
+    private readonly ConcurrentDictionary<string, string> cache = new();
 
-    public string For(string asset) => _cache.GetOrAdd(asset, a =>
+    public string For(string asset) => cache.GetOrAdd(asset, a =>
     {
         var file = env.WebRootFileProvider.GetFileInfo(a);
         if (!file.Exists) return "0";

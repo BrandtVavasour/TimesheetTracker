@@ -16,13 +16,11 @@ internal sealed class IdentityRedirectManager(NavigationManager navigationManage
         MaxAge = TimeSpan.FromSeconds(5),
     };
 
-    public void RedirectTo(string? uri)
-    {
+    public void RedirectTo(string? uri) =>
         // Resolve to a same-origin local path — blocks open redirects via a
         // query-supplied ReturnUrl (//evil.com, https://evil.com, backslash
         // tricks, non-http schemes). Internal same-origin redirects are kept.
         navigationManager.NavigateTo(SafeRedirect.ToLocal(uri, navigationManager.BaseUri));
-    }
 
     public void RedirectTo(string uri, Dictionary<string, object?> queryParameters)
     {

@@ -31,7 +31,7 @@ public class MainLayoutGraceTests
             sp.GetRequiredService<IDbContextFactory<TimesheetDbContext>>().CreateDbContext());
         ctx.Services.AddScoped<ITimeCalculationService, TimeCalculationService>();
         ctx.Services.AddScoped<IHolidayService, HolidayService>();
-        ctx.Services.AddSingleton<IClock>(new StubClock(new DateOnly(2026, 6, 12)));
+        ctx.Services.AddSingleton<IClock>(new StubClock(new(2026, 6, 12)));
         ctx.Services.AddScoped<ICurrentUser>(_ => new StubCurrentUser(userId));
         ctx.Services.AddScoped<ITimesheetData, TimesheetData>();
         ctx.Services.AddScoped<IToastService, ToastService>();
@@ -39,17 +39,15 @@ public class MainLayoutGraceTests
         // Auth must be registered before the provider is first resolved (below).
         ctx.AddAuthorization().SetAuthorized("Test User");
 
-        using (var scope = ctx.Services.CreateScope())
+        using var scope = ctx.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<TimesheetDbContext>();
+        db.Users.Add(new()
         {
-            var db = scope.ServiceProvider.GetRequiredService<TimesheetDbContext>();
-            db.Users.Add(new AppUser
-            {
-                Id = userId, UserName = "u@example.com", Email = "u@example.com",
-                DisplayName = "Test User", DefaultState = AustralianState.NSW,
-                EmailConfirmed = emailConfirmed, CreatedAt = createdAt,
-            });
-            db.SaveChanges();
-        }
+            Id = userId, UserName = "u@example.com", Email = "u@example.com",
+            DisplayName = "Test User", DefaultState = AustralianState.NSW,
+            EmailConfirmed = emailConfirmed, CreatedAt = createdAt,
+        });
+        db.SaveChanges();
 
         return ctx;
     }

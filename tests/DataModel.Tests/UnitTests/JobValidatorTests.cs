@@ -6,7 +6,7 @@ namespace DataModel.Tests.UnitTests;
 [TestFixture]
 public class JobValidatorTests
 {
-    private readonly JobValidator _validator = new();
+    private readonly JobValidator validator = new();
 
     private static Job ValidJob() => new()
     {
@@ -18,10 +18,8 @@ public class JobValidatorTests
     };
 
     [Test]
-    public void ValidJob_Passes()
-    {
-        _validator.Validate(ValidJob()).IsValid.Should().BeTrue();
-    }
+    public void ValidJob_Passes() =>
+        validator.Validate(ValidJob()).IsValid.Should().BeTrue();
 
     [TestCase("")]
     [TestCase("   ")]
@@ -29,7 +27,7 @@ public class JobValidatorTests
     {
         var job = ValidJob();
         job.Name = name;
-        var result = _validator.Validate(job);
+        var result = validator.Validate(job);
         result.IsValid.Should().BeFalse();
         result.Errors.Should().Contain(e => e.PropertyName == nameof(Job.Name));
     }
@@ -38,8 +36,8 @@ public class JobValidatorTests
     public void NameTooLong_Fails()
     {
         var job = ValidJob();
-        job.Name = new string('x', 201);
-        _validator.Validate(job).IsValid.Should().BeFalse();
+        job.Name = new('x', 201);
+        validator.Validate(job).IsValid.Should().BeFalse();
     }
 
     [TestCase(0, true)]
@@ -50,7 +48,7 @@ public class JobValidatorTests
     {
         var job = ValidJob();
         job.DecimalPlaces = places;
-        _validator.Validate(job).IsValid.Should().Be(valid);
+        validator.Validate(job).IsValid.Should().Be(valid);
     }
 
     [Test]
@@ -58,7 +56,7 @@ public class JobValidatorTests
     {
         var job = ValidJob();
         job.CustomFields.Add(new() { Name = "", Value = "x" });
-        _validator.Validate(job).IsValid.Should().BeFalse();
+        validator.Validate(job).IsValid.Should().BeFalse();
     }
 
     [Test]
@@ -66,6 +64,6 @@ public class JobValidatorTests
     {
         var job = ValidJob();
         job.ProjectCodes.Add(new() { Code = "", Description = "x" });
-        _validator.Validate(job).IsValid.Should().BeFalse();
+        validator.Validate(job).IsValid.Should().BeFalse();
     }
 }

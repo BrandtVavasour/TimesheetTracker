@@ -55,8 +55,6 @@ public class ClientIpTests
     }
 
     [Test]
-    public void Unknown_WhenNothingAvailable()
-    {
+    public void Unknown_WhenNothingAvailable() =>
         ClientIp.For(new DefaultHttpContext()).Should().Be("unknown");
-    }
 }

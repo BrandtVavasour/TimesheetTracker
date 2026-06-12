@@ -37,7 +37,7 @@ public static class ProxyNetworks
             else if (IPAddress.TryParse(raw, out var ip))
             {
                 // A bare address means "this exact host".
-                result.Add(new IPNetwork(ip, ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6 ? 128 : 32));
+                result.Add(new(ip, ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6 ? 128 : 32));
             }
         }
         return result;
