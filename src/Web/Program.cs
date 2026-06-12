@@ -214,6 +214,9 @@ try
     }
 
     app.UseSecurityHeaders();
+    // Short-circuit dotfile probes (/.env, /.git/config, …) with a clean 404
+    // before they reach static-file serving or routing.
+    app.UseHiddenPathGuard();
     app.UseStaticFiles(new StaticFileOptions
     {
         // App.razor stamps ?v=<content-hash> on ts.js/app.css, so cached copies
