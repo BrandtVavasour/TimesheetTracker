@@ -62,7 +62,7 @@ else
         <div style="display:flex;flex-direction:column;gap:16px;min-width:0;">
             <Card Title="General" Desc="Name, holiday state, output precision, and scheduled work days.">
                 <div style="display:flex;flex-direction:column;gap:18px;">
-                    <div style="display:grid;grid-template-columns:1fr 200px;gap:16px;">
+                    <div class="ts-2col" style="display:grid;grid-template-columns:1fr 200px;gap:16px;">
                         <Field Label="Job name">
                             <input class="input" @bind="_job.Name" @bind:event="oninput" placeholder="e.g. Acme Corp"
                                    style="@(FieldError(nameof(Job.Name)) is not null ? "border-color:var(--danger);" : "")" />
@@ -81,7 +81,7 @@ else
                             </select>
                         </Field>
                     </div>
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;">
+                    <div class="ts-2col" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;">
                         <Field Label="Decimal places" Hint="Precision of the copyable decimal value.">
                             <div style="display:flex;gap:5px;align-items:center;">
                                 @for (var n = 0; n <= 4; n++)
@@ -138,12 +138,12 @@ else
                 else
                 {
                     <div style="display:flex;flex-direction:column;gap:8px;">
-                        <div style="display:grid;grid-template-columns:1fr 1fr 150px 34px;gap:10px;font-size:11px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:var(--text-mute);padding:0 2px;">
+                        <div class="ts-fieldhead" style="display:grid;grid-template-columns:1fr 1fr 150px 34px;gap:10px;font-size:11px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:var(--text-mute);padding:0 2px;">
                             <span>Label</span><span>Value</span><span>On timesheet</span><span></span>
                         </div>
                         @foreach (var f in _job.CustomFields.OrderBy(f => f.DisplayOrder).ToList())
                         {
-                            <div style="display:grid;grid-template-columns:1fr 1fr 150px 34px;gap:10px;align-items:center;">
+                            <div class="ts-fieldrow" style="display:grid;grid-template-columns:1fr 1fr 150px 34px;gap:10px;align-items:center;">
                                 <input class="input" @bind="f.Name" @bind:event="oninput" placeholder="Employee #" />
                                 <input class="input mono" @bind="f.Value" @bind:event="oninput" placeholder="40192" />
                                 <button class="focusable" @onclick="@(() => f.ShowOnTimesheet = !f.ShowOnTimesheet)"
@@ -173,12 +173,12 @@ else
                 else
                 {
                     <div style="display:flex;flex-direction:column;gap:8px;">
-                        <div style="display:grid;grid-template-columns:160px 1fr 130px 34px;gap:10px;font-size:11px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:var(--text-mute);padding:0 2px;">
+                        <div class="ts-fieldhead" style="display:grid;grid-template-columns:160px 1fr 130px 34px;gap:10px;font-size:11px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:var(--text-mute);padding:0 2px;">
                             <span>Code</span><span>Description</span><span>Status</span><span></span>
                         </div>
                         @foreach (var c in _job.ProjectCodes.OrderBy(c => c.DisplayOrder).ToList())
                         {
-                            <div style="display:grid;grid-template-columns:160px 1fr 130px 34px;gap:10px;align-items:center;opacity:@(c.IsActive ? "1" : "0.66");">
+                            <div class="ts-fieldrow" style="display:grid;grid-template-columns:160px 1fr 130px 34px;gap:10px;align-items:center;opacity:@(c.IsActive ? "1" : "0.66");">
                                 <input class="input mono" @bind="c.Code" @bind:event="oninput" placeholder="PRJ-1234" />
                                 <input class="input" @bind="c.Description" @bind:event="oninput" placeholder="Optional label" />
                                 <button class="focusable" @onclick="@(() => c.IsActive = !c.IsActive)"

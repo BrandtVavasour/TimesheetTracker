@@ -78,19 +78,19 @@ else
                 </div>
             }
 
-            <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
+            <div class="ts-toolbar" style="margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
                 <a href="calendar" class="ts-btn focusable" style="display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;font-size:13px;font-weight:600;border-radius:var(--r-sm);border:1px solid var(--line-strong);background:var(--surface);color:var(--text);box-shadow:var(--sh-1);text-decoration:none;white-space:nowrap;">
                     <Icon Name="calendar" Size="15" /> Month
                 </a>
-                <div style="display:flex;align-items:center;gap:2px;background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--r-md);padding:2px;box-shadow:var(--sh-1);">
+                <div style="display:flex;align-items:center;gap:2px;background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--r-md);padding:2px;box-shadow:var(--sh-1);flex:1 1 auto;min-width:0;justify-content:center;">
                     <button class="ts-iconbtn focusable" @onclick="@(() => ChangeWeek(-7))" title="Previous week"
-                            style="width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;border-radius:var(--r-sm);border:none;background:transparent;color:var(--text-soft);cursor:pointer;"><Icon Name="chevL" Size="17" /></button>
-                    <button @onclick="GoToday" class="focusable" style="min-width:168px;text-align:center;border:none;background:transparent;cursor:pointer;padding:0 8px;">
+                            style="width:32px;height:32px;flex:none;display:inline-flex;align-items:center;justify-content:center;border-radius:var(--r-sm);border:none;background:transparent;color:var(--text-soft);cursor:pointer;"><Icon Name="chevL" Size="17" /></button>
+                    <button @onclick="GoToday" class="focusable" style="flex:1 1 auto;min-width:120px;text-align:center;border:none;background:transparent;cursor:pointer;padding:0 8px;">
                         <span style="display:block;font-size:13.5px;font-weight:700;">@CalendarFormat.Range(days[0], days[6])</span>
                         <span style="display:block;font-size:10.5px;color:var(--text-mute);">@CalendarFormat.FyLabel(days[0]) · Week starts Mon</span>
                     </button>
                     <button class="ts-iconbtn focusable" @onclick="@(() => ChangeWeek(7))" title="Next week"
-                            style="width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;border-radius:var(--r-sm);border:none;background:transparent;color:var(--text-soft);cursor:pointer;"><Icon Name="chevR" Size="17" /></button>
+                            style="width:32px;height:32px;flex:none;display:inline-flex;align-items:center;justify-content:center;border-radius:var(--r-sm);border:none;background:transparent;color:var(--text-soft);cursor:pointer;"><Icon Name="chevR" Size="17" /></button>
                 </div>
                 <Btn Variant="outline" Icon="download" OnClick="ExportWeek" Style="height:38px;">Export week</Btn>
             </div>

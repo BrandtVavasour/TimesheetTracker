@@ -60,11 +60,11 @@ else
         </div>
 
         <div style="background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden;box-shadow:var(--sh-1);">
-            <div style="display:grid;grid-template-columns:44px repeat(7, 1fr);border-bottom:1px solid var(--line);background:var(--surface-2);">
-                <div></div>
+            <div class="cal-grid" style="display:grid;grid-template-columns:44px repeat(7, 1fr);border-bottom:1px solid var(--line);background:var(--surface-2);">
+                <div class="cal-arrow-col"></div>
                 @for (var i = 0; i < 7; i++)
                 {
-                    <div style="padding:9px 12px;font-size:11px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:@(i >= 5 ? "var(--text-mute)" : "var(--text-soft)");border-left:1px solid var(--line);">@CalendarFormat.DowShort[i]</div>
+                    <div class="cal-dow" style="padding:9px 12px;font-size:11px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:@(i >= 5 ? "var(--text-mute)" : "var(--text-soft)");border-left:1px solid var(--line);">@CalendarFormat.DowShort[i]</div>
                 }
             </div>
             @for (var w = 0; w < 6; w++)
@@ -73,7 +73,7 @@ else
                 var wkStart = CalendarFormat.StartOfWeek(week[0]);
                 var isSel = wkStart == _selectedWeek;
                 var wkMin = week.Sum(MinFor);
-                <div class="cal-week" style="display:grid;grid-template-columns:44px repeat(7, 1fr);border-bottom:@(w < 5 ? "1px solid var(--line)" : "none");background:@(isSel ? "var(--accent-tint)" : "transparent");">
+                <div class="cal-week cal-grid" style="display:grid;grid-template-columns:44px repeat(7, 1fr);border-bottom:@(w < 5 ? "1px solid var(--line)" : "none");background:@(isSel ? "var(--accent-tint)" : "transparent");">
                     <button class="focusable cal-load" title="Open this week" @onclick="@(() => OpenWeek(wkStart))"
                             style="border:none;border-right:1px solid var(--line);cursor:pointer;background:@(isSel ? "var(--accent)" : "transparent");color:@(isSel ? "#fff" : "var(--text-mute)");display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:4px 0;">
                         <Icon Name="arrowR" Size="15" />
