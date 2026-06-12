@@ -1,8 +1,12 @@
 @page "/jobs"
 @rendermode InteractiveServer
+@using FluentValidation
+@using Microsoft.AspNetCore.Components.Routing
 @inject ITimesheetData Data
 @inject IToastService Toast
 @inject ILogger<Jobs> Logger
+@inject IValidator<Job> Validator
+@inject IJSRuntime JS
 
 <PageHead Title="Jobs" Subtitle="Settings, custom fields, and project codes — per job." />
 
@@ -20,6 +24,12 @@ else if (_all.Count == 0)
 }
 else
 {
+    @* Warn before leaving (route change or browser close/refresh) with unsaved edits. *@
+    <NavigationLock ConfirmExternalNavigation="@IsDirty" OnBeforeInternalNavigation="GuardNavAsync" />
+
+    @* Re-validate live once a save has been attempted so errors clear as they're fixed. *@
+    @if (_validated && _job is not null) { _validation = Validator.Validate(_job); }
+
     <div style="display:grid;grid-template-columns:232px 1fr;gap:18px;align-items:start;padding:22px 0 40px;" class="ts-jobs-grid">
         <!-- job list -->
         <div style="display:flex;flex-direction:column;gap:6px;">
@@ -37,7 +47,13 @@ else
                 }
             }
             <Btn Variant="outline" Icon="plus" Size="sm" Style="margin-top:8px;justify-content:flex-start;" OnClick="AddJob">New job</Btn>
-            <Btn Variant="primary" Icon="check" Size="sm" Style="margin-top:4px;justify-content:flex-start;" OnClick="Save">Save changes</Btn>
+            <Btn Variant="primary" Icon="check" Size="sm" Style="margin-top:4px;justify-content:flex-start;" Disabled="@(!IsDirty)" OnClick="Save">Save changes</Btn>
+            @if (_validated && OtherErrors.Any())
+            {
+                <div style="margin-top:6px;padding:8px 10px;border-radius:var(--r-sm);background:var(--danger-tint);border:1px solid var(--danger);font-size:12px;color:var(--danger);">
+                    @foreach (var msg in OtherErrors) { <div>@msg</div> }
+                </div>
+            }
         </div>
 
         <!-- form (a job is always selected when the list is non-empty) -->
@@ -48,7 +64,12 @@ else
                 <div style="display:flex;flex-direction:column;gap:18px;">
                     <div style="display:grid;grid-template-columns:1fr 200px;gap:16px;">
                         <Field Label="Job name">
-                            <input class="input" @bind="_job.Name" @bind:event="oninput" placeholder="e.g. Acme Corp" />
+                            <input class="input" @bind="_job.Name" @bind:event="oninput" placeholder="e.g. Acme Corp"
+                                   style="@(FieldError(nameof(Job.Name)) is not null ? "border-color:var(--danger);" : "")" />
+                            @if (FieldError(nameof(Job.Name)) is { } err)
+                            {
+                                <span style="font-size:12px;color:var(--danger);">@err</span>
+                            }
                         </Field>
                         <Field Label="Holiday state" Hint="@($"Effective: {(_job.StateOverride?.ToString() ?? _user.DefaultState.ToString())}")">
                             <select class="input" value="@(_job.StateOverride?.ToString() ?? "")" @onchange="OnStateChange">
@@ -194,6 +215,20 @@ else
     private AppUser _user = null!;
     private bool _loaded;
 
+    private FormSnapshot<Job>? _snapshot;                          // baseline for dirty tracking
+    private FluentValidation.Results.ValidationResult? _validation;
+    private bool _validated;                                       // show errors only after a save attempt
+
+    private bool IsDirty => _job is not null && _snapshot is not null && _snapshot.IsDirty(_job);
+
+    private string? FieldError(string property) =>
+        _validated ? _validation?.Errors.FirstOrDefault(e => e.PropertyName == property)?.ErrorMessage : null;
+
+    private IEnumerable<string> OtherErrors =>
+        _validated && _validation is not null
+            ? _validation.Errors.Where(e => e.PropertyName != nameof(Job.Name)).Select(e => e.ErrorMessage).Distinct()
+            : [];
+
     protected override async Task OnInitializedAsync()
     {
         _user = await Data.CurrentUserAsync();
@@ -206,9 +241,26 @@ else
 
     private async Task SelectAsync(Guid id)
     {
+        // Don't silently lose edits when switching to another job.
+        if (IsDirty && !await ConfirmDiscardAsync()) return;
+
         var src = await Data.JobAsync(id);
         if (src is null) return;
         _job = Clone(src);
+        _snapshot = new(_job);
+        _validation = null;
+        _validated = false;
+    }
+
+    private async Task<bool> ConfirmDiscardAsync() =>
+        await JS.InvokeAsync<bool>("confirm", "You have unsaved changes. Discard them?");
+
+    private async Task GuardNavAsync(LocationChangingContext context)
+    {
+        if (IsDirty && !await ConfirmDiscardAsync())
+        {
+            context.PreventNavigation();
+        }
     }
 
     private static TimeOnly? ParseTime(object? value) =>
@@ -256,34 +308,37 @@ else
 
     private async Task AddJob()
     {
-        try
+        if (IsDirty && !await ConfirmDiscardAsync()) return;
+
+        Job? created = null;
+        var ok = await Toast.RunAsync(Logger,
+            async () => { created = await Data.AddJobAsync(); await ReloadListAsync(); },
+            "Job created", "Couldn't create the job — please try again.", "add job");
+        if (ok && created is not null)
         {
-            var job = await Data.AddJobAsync();
-            await ReloadListAsync();
-            await SelectAsync(job.Id);
-            Toast.Success("Job created");
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Failed to create job");
-            Toast.Error("Couldn't create the job — please try again.");
+            _job = Clone(created);
+            _snapshot = new(_job);
+            _validation = null;
+            _validated = false;
         }
     }
 
     private async Task Save()
     {
         if (_job is null) return;
-        try
+
+        _validated = true;
+        _validation = Validator.Validate(_job);
+        if (!_validation.IsValid)
         {
-            await Data.SaveJobAsync(_job);
-            await ReloadListAsync();
-            Toast.Success($"{_job.Name} saved");
+            Toast.Error("Please fix the highlighted fields.");
+            return;
         }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Failed to save job {JobId}", _job.Id);
-            Toast.Error("Couldn't save the job — please try again.");
-        }
+
+        var ok = await Toast.RunAsync(Logger,
+            async () => { await Data.SaveJobAsync(_job); await ReloadListAsync(); },
+            $"{_job.Name} saved", "Couldn't save the job — please try again.", $"save job {_job.Id}");
+        if (ok) _snapshot!.Reset(_job);
     }
 
     private RenderFragment JobPill(Job j, bool muted) => __builder =>

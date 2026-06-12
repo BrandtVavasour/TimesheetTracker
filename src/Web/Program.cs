@@ -170,6 +170,7 @@ try
     builder.Services.AddScoped<IToastService, ToastService>();
     builder.Services.AddScoped<IAccountInfo, AccountInfo>();
     builder.Services.AddSingleton<IAssetVersion, AssetVersion>();
+    builder.Services.AddScoped<FluentValidation.IValidator<Job>, TimesheetTracker.DataModel.Validation.JobValidator>();
 
     // Throttle the unauthenticated auth POSTs (login / register / forgot- and
     // reset-password / external-login) per client IP — Identity lockout only

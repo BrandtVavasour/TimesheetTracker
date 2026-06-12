@@ -43,6 +43,7 @@ public class PagesRenderTests
         ctx.Services.AddScoped<ICurrentUser>(_ => new StubCurrentUser(SeedData.DemoUserId));
         ctx.Services.AddScoped<ITimesheetData, TimesheetData>();
         ctx.Services.AddScoped<IToastService, ToastService>();
+        ctx.Services.AddScoped<FluentValidation.IValidator<Job>, TimesheetTracker.DataModel.Validation.JobValidator>();
         ctx.Services.AddSingleton<IAccountInfo>(new StubAccountInfo(hasGoogle: false, hasPassword: true));
         extraServices?.Invoke(ctx.Services);
 
