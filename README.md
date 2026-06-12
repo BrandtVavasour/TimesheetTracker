@@ -6,6 +6,8 @@ only — no pay/penalty/award calculation.
 
 Built with **.NET 10 · Blazor Web App (Interactive Server) · EF Core + PostgreSQL · ASP.NET Identity**.
 
+**🔗 Live demo: <https://timesheet.jabtech.com.au/>**
+
 ## Screenshots
 
 | | Desktop | Mobile |
