@@ -2,7 +2,7 @@
 
 - **Date:** 2026-06-09
 - **Status:** Approved (data model + architecture) — ready for implementation planning & design handoff
-- **Author:** Alex + Claude
+- **Author:** JABTech + Claude
 - **Audience:** This document is the handoff for *claude design* (UI/visual design) and for the implementation plan. It focuses on the **data model entities** and the **app overview**.
 
 ---

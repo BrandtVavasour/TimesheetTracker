@@ -25,9 +25,9 @@ public class AdminBootstrapTests
     public async Task MatchingUser_GetsAdminRole_AndRoleIsCreated()
     {
         using var host = new IdentityTestHost();
-        var user = await host.CreateUserAsync("owner@gmail.com");
+        var user = await host.CreateUserAsync("owner@example.com");
 
-        await AdminBootstrap.EnsureAdminsAsync(host.Provider, "owner@gmail.com", NullLogger.Instance);
+        await AdminBootstrap.EnsureAdminsAsync(host.Provider, "owner@example.com", NullLogger.Instance);
 
         (await host.Roles.RoleExistsAsync(AdminBootstrap.AdminRole)).Should().BeTrue();
         (await host.Users.IsInRoleAsync(user, AdminBootstrap.AdminRole)).Should().BeTrue();
@@ -37,9 +37,9 @@ public class AdminBootstrapTests
     public async Task EmailMatch_IsCaseInsensitive()
     {
         using var host = new IdentityTestHost();
-        var user = await host.CreateUserAsync("Alex@Example.com");
+        var user = await host.CreateUserAsync("Owner@Example.com");
 
-        await AdminBootstrap.EnsureAdminsAsync(host.Provider, "alex@example.COM", NullLogger.Instance);
+        await AdminBootstrap.EnsureAdminsAsync(host.Provider, "owner@example.COM", NullLogger.Instance);
 
         (await host.Users.IsInRoleAsync(user, AdminBootstrap.AdminRole)).Should().BeTrue();
     }

@@ -11,7 +11,7 @@ public class ProfileFormValidatorTests
     [Test]
     public void Valid_Passes()
     {
-        var form = new ProfileForm { DisplayName = "Alex", DefaultState = AustralianState.NSW };
+        var form = new ProfileForm { DisplayName = "Alex Carter", DefaultState = AustralianState.NSW };
         _validator.Validate(form).IsValid.Should().BeTrue();
     }
 
