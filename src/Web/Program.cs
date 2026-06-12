@@ -185,10 +185,14 @@ try
             if (HttpMethods.IsPost(ctx.Request.Method)
                 && ctx.Request.Path.StartsWithSegments("/Account", StringComparison.OrdinalIgnoreCase))
             {
-                var ip = ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-                return RateLimitPartition.GetFixedWindowLimiter($"auth:{ip}", _ => new FixedWindowRateLimiterOptions
+                // Key on the REAL client IP (CF-Connecting-IP behind the tunnel).
+                // Using Connection.RemoteIpAddress would be the single cloudflared
+                // IP for everyone and 429 legitimate sign-ups. The limit is a
+                // generous backstop — a human auth flow is a handful of POSTs;
+                // Cloudflare's WAF is the primary volumetric defence.
+                return RateLimitPartition.GetFixedWindowLimiter($"auth:{ClientIp.For(ctx)}", _ => new FixedWindowRateLimiterOptions
                 {
-                    PermitLimit = 10,
+                    PermitLimit = 20,
                     Window = TimeSpan.FromMinutes(1),
                     QueueLimit = 0,
                 });
