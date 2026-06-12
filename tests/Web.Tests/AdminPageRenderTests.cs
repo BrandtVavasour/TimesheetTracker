@@ -35,10 +35,12 @@ public class AdminPageRenderTests
         return ctx;
     }
 
-    private static AdminUserView View(string email, bool admin = false, bool locked = false, int failed = 0) =>
+    private static AdminUserView View(string email, bool admin = false, bool locked = false, int failed = 0,
+        int jobs = 0, int entries = 0) =>
         new(Guid.NewGuid(), email.Split('@')[0], email, EmailConfirmed: true, IsAdmin: admin,
             IsLockedOut: locked, LockoutEnd: locked ? DateTimeOffset.UtcNow.AddMinutes(15) : null,
-            AccessFailedCount: failed, MaxFailedAccessAttempts: 5, HasPassword: true);
+            AccessFailedCount: failed, MaxFailedAccessAttempts: 5, HasPassword: true,
+            JobCount: jobs, EntryCount: entries);
 
     [Test]
     public void Admin_ListsUsers_WithAdminAndLockedBadgesAndReason()
@@ -58,6 +60,41 @@ public class AdminPageRenderTests
         cut.Markup.Should().Contain("Locked");
         cut.Markup.Should().Contain("failed sign-ins"); // the exposed lockout reason
         cut.FindAll("button").Should().Contain(b => b.TextContent.Contains("Unlock"));
+    }
+
+    [Test]
+    public void Admin_ShowsPerUserJobAndEntryCounts()
+    {
+        var fake = new FakeAdminService();
+        fake.Users.Add(View("user@example.com", jobs: 4, entries: 27));
+        using var ctx = NewContext(fake);
+
+        var cut = ctx.Render<Admin>();
+        cut.WaitForState(() => !cut.Markup.Contains("Loading…"), TimeSpan.FromSeconds(10));
+
+        var row = cut.Find("tbody tr").TextContent;
+        row.Should().Contain("4");
+        row.Should().Contain("27");
+    }
+
+    [Test]
+    public void Admin_SortByJobsHeader_ReordersRowsByJobCount()
+    {
+        var fake = new FakeAdminService();
+        fake.Users.Add(View("alpha@example.com", jobs: 1));
+        fake.Users.Add(View("beta@example.com", jobs: 9));
+        fake.Users.Add(View("gamma@example.com", jobs: 5));
+        using var ctx = NewContext(fake);
+        var cut = ctx.Render<Admin>();
+        cut.WaitForState(() => !cut.Markup.Contains("Loading…"), TimeSpan.FromSeconds(10));
+
+        // Default sort is by name ascending → alpha first.
+        cut.FindAll("tbody tr")[0].TextContent.Should().Contain("alpha@example.com");
+
+        // Click the Jobs header → sorts by job count, most first.
+        cut.FindAll("th").Single(th => th.TextContent.Contains("Jobs")).Click();
+
+        cut.FindAll("tbody tr")[0].TextContent.Should().Contain("beta@example.com"); // 9 jobs
     }
 
     [Test]

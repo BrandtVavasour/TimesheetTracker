@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using TimesheetTracker.DataModel;
 
 namespace TimesheetTracker.Web.Services;
 
@@ -15,7 +16,9 @@ public record AdminUserView(
     DateTimeOffset? LockoutEnd,
     int AccessFailedCount,
     int MaxFailedAccessAttempts,
-    bool HasPassword);
+    bool HasPassword,
+    int JobCount,
+    int EntryCount);
 
 public interface IAdminService
 {
@@ -30,7 +33,8 @@ public interface IAdminService
 public sealed class AdminService(
     UserManager<AppUser> users,
     RoleManager<IdentityRole<Guid>> roles,
-    IOptions<IdentityOptions> identityOptions) : IAdminService
+    IOptions<IdentityOptions> identityOptions,
+    IDbContextFactory<TimesheetDbContext> dbFactory) : IAdminService
 {
     public async Task<IReadOnlyList<AdminUserView>> GetUsersAsync(CancellationToken cancel = default)
     {
@@ -39,6 +43,8 @@ public sealed class AdminService(
         var adminIds = await roles.RoleExistsAsync(AdminBootstrap.AdminRole)
             ? (await users.GetUsersInRoleAsync(AdminBootstrap.AdminRole)).Select(u => u.Id).ToHashSet()
             : [];
+
+        var (jobsByUser, entriesByUser) = await UsageCountsAsync(cancel);
 
         var all = await users.Users.AsNoTracking().OrderBy(u => u.Email).ToListAsync(cancel);
 
@@ -55,7 +61,29 @@ public sealed class AdminService(
             u.LockoutEnd,
             u.AccessFailedCount,
             maxFailed,
-            HasPassword: !string.IsNullOrEmpty(u.PasswordHash))).ToList();
+            HasPassword: !string.IsNullOrEmpty(u.PasswordHash),
+            JobCount: jobsByUser.GetValueOrDefault(u.Id),
+            EntryCount: entriesByUser.GetValueOrDefault(u.Id))).ToList();
+    }
+
+    /// <summary>Per-user job and time-entry counts across ALL users. The per-user
+    /// query filters are bypassed (admin counts span every account); the admin
+    /// only ever sees totals here, never another user's actual data.</summary>
+    private async Task<(Dictionary<Guid, int> Jobs, Dictionary<Guid, int> Entries)> UsageCountsAsync(CancellationToken cancel)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(cancel);
+
+        var jobs = await db.Jobs.IgnoreQueryFilters()
+            .GroupBy(j => j.UserId)
+            .Select(g => new { UserId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.UserId, x => x.Count, cancel);
+
+        var entries = await db.TimeEntries.IgnoreQueryFilters()
+            .GroupBy(e => e.Job.UserId)
+            .Select(g => new { UserId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.UserId, x => x.Count, cancel);
+
+        return (jobs, entries);
     }
 
     public async Task<bool> UnlockAsync(Guid userId)

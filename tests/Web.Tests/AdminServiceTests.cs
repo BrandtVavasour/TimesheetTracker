@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using TimesheetTracker.DataModel;
 using TimesheetTracker.Web.Services;
 
 namespace Web.Tests;
@@ -10,7 +12,9 @@ namespace Web.Tests;
 public class AdminServiceTests
 {
     private static AdminService NewService(IdentityTestHost host) =>
-        new(host.Users, host.Roles, host.Provider.GetRequiredService<IOptions<IdentityOptions>>());
+        new(host.Users, host.Roles,
+            host.Provider.GetRequiredService<IOptions<IdentityOptions>>(),
+            host.Provider.GetRequiredService<IDbContextFactory<TimesheetDbContext>>());
 
     [Test]
     public async Task GetUsers_ListsEveryone_WithAdminFlagSetForGrantedUsers()
@@ -91,5 +95,25 @@ public class AdminServiceTests
         using var host = new IdentityTestHost();
 
         (await NewService(host).UnlockAsync(Guid.NewGuid())).Should().BeFalse();
+    }
+
+    [Test]
+    public async Task GetUsers_CountsJobsAndEntriesPerUser()
+    {
+        using var host = new IdentityTestHost();
+        var a = await host.CreateUserAsync("a@example.com");
+        var b = await host.CreateUserAsync("b@example.com");
+        await host.SeedJobsAndEntriesAsync(a.Id, jobs: 2, entriesPerJob: 3); // 2 jobs, 6 entries
+        await host.SeedJobsAndEntriesAsync(b.Id, jobs: 1, entriesPerJob: 0); // 1 job, 0 entries
+
+        var users = await NewService(host).GetUsersAsync();
+
+        var ua = users.Single(u => u.Email == "a@example.com");
+        ua.JobCount.Should().Be(2);
+        ua.EntryCount.Should().Be(6);
+
+        var ub = users.Single(u => u.Email == "b@example.com");
+        ub.JobCount.Should().Be(1);
+        ub.EntryCount.Should().Be(0);
     }
 }

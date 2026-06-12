@@ -6,7 +6,7 @@
 @inject IToastService Toast
 @inject ILogger<Admin> Logger
 
-<PageHead Title="Admin" Subtitle="Every account in the system and its sign-in status." />
+<PageHead Title="Admin" Subtitle="Every account in the system, its usage, and sign-in status." />
 
 @if (_users is null)
 {
@@ -14,52 +14,70 @@
 }
 else
 {
-    <div style="display:flex;flex-direction:column;gap:16px;padding:22px 0 40px;max-width:920px;">
-        <Card Title="Users" Desc="@($"{_users.Count} account{(_users.Count == 1 ? "" : "s")} · {_users.Count(u => u.IsAdmin)} admin · {_users.Count(u => u.IsLockedOut)} locked")">
-            <div style="display:flex;flex-direction:column;gap:10px;">
-                @foreach (var u in _users)
-                {
-                    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:12px 14px;border-radius:var(--r-md);
-                                border:1px solid @(u.IsLockedOut ? "var(--danger-tint)" : "var(--line)");background:@(u.IsLockedOut ? "var(--danger-tint)" : "var(--surface)");">
-                        <span style="width:40px;height:40px;flex:none;border-radius:11px;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:15px;font-weight:700;">@Initials(u.DisplayName)</span>
-
-                        <div style="flex:1;min-width:170px;">
-                            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-                                <span style="font-size:14.5px;font-weight:700;">@u.DisplayName</span>
-                                @if (u.IsAdmin) { <Badge Tone="accent" IconName="check">Admin</Badge> }
-                                @if (u.IsLockedOut) { <Badge Tone="danger" IconName="flag">Locked</Badge> }
-                                @if (!u.EmailConfirmed) { <Badge Tone="holiday">Email unverified</Badge> }
-                            </div>
-                            <div style="font-size:12.5px;color:var(--text-soft);margin-top:1px;">@u.Email</div>
-                            @if (StatusLine(u) is { } status)
-                            {
-                                <div style="font-size:12px;color:@(u.IsLockedOut ? "var(--danger)" : "var(--text-mute)");margin-top:3px;">@status</div>
-                            }
-                        </div>
-
-                        <div style="display:flex;align-items:center;gap:10px;flex:none;">
-                            <span style="font-size:11.5px;color:var(--text-mute);white-space:nowrap;">
-                                @(u.HasPassword ? "Password" : "Google only")
-                            </span>
-                            @if (u.IsLockedOut)
-                            {
-                                <Btn Size="sm" Variant="danger" Icon="check" OnClick="@(() => Unlock(u))">Unlock</Btn>
-                            }
-                        </div>
-                    </div>
-                }
+    <div style="display:flex;flex-direction:column;gap:16px;padding:22px 0 40px;">
+        <Card Title="Users" Desc="@Summary()">
+            <div style="overflow-x:auto;">
+                <table style="width:100%;border-collapse:collapse;font-size:13.5px;min-width:680px;">
+                    <thead>
+                        <tr>
+                            @Header("name", "User", left: true)
+                            @Header("jobs", "Jobs")
+                            @Header("entries", "Entries")
+                            @Header("status", "Status", left: true)
+                            <th style="@HeadStyle(false)">&nbsp;</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var u in Sorted())
+                        {
+                            <tr class="te-row" style="background:@(u.IsLockedOut ? "var(--danger-tint)" : "transparent");">
+                                <td style="@Td()">
+                                    <div style="display:flex;align-items:center;gap:11px;">
+                                        <span style="width:34px;height:34px;flex:none;border-radius:9px;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:13px;font-weight:700;">@Initials(u.DisplayName)</span>
+                                        <div style="min-width:0;">
+                                            <div style="font-weight:700;white-space:nowrap;">@u.DisplayName</div>
+                                            <div style="font-size:12px;color:var(--text-soft);white-space:nowrap;">@u.Email · @(u.HasPassword ? "Password" : "Google")</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="mono" style="@Td("right")font-weight:600;">@u.JobCount</td>
+                                <td class="mono" style="@Td("right")font-weight:600;">@u.EntryCount</td>
+                                <td style="@Td()">
+                                    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                                        @if (u.IsAdmin) { <Badge Tone="accent" IconName="check">Admin</Badge> }
+                                        @if (u.IsLockedOut) { <Badge Tone="danger" IconName="flag">Locked</Badge> }
+                                        @if (!u.EmailConfirmed) { <Badge Tone="holiday">Unverified</Badge> }
+                                        @if (!u.IsAdmin && !u.IsLockedOut && u.EmailConfirmed) { <span style="font-size:12px;color:var(--text-mute);">Active</span> }
+                                    </div>
+                                    @if (StatusLine(u) is { } status)
+                                    {
+                                        <div style="font-size:11.5px;color:@(u.IsLockedOut ? "var(--danger)" : "var(--text-mute)");margin-top:3px;white-space:nowrap;">@status</div>
+                                    }
+                                </td>
+                                <td style="@Td("right")">
+                                    @if (u.IsLockedOut)
+                                    {
+                                        <Btn Size="sm" Variant="danger" Icon="check" OnClick="@(() => Unlock(u))">Unlock</Btn>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
             </div>
         </Card>
 
         <div style="font-size:11.5px;color:var(--text-mute);display:flex;gap:6px;align-items:flex-start;">
             <span style="margin-top:1px;flex:none;"><Icon Name="info" Size="13" /></span>
-            <span>Lockout is automatic after @Max failed sign-ins and clears itself after 15 minutes. Unlock clears it immediately and resets the failed-attempt count.</span>
+            <span>Counts are usage only — the admin never sees another account's jobs or time entries. Lockout is automatic after @Max failed sign-ins and clears itself after 15 minutes; Unlock clears it immediately.</span>
         </div>
     </div>
 }
 
 @code {
     private IReadOnlyList<AdminUserView>? _users;
+    private string _sort = "name";
+    private bool _asc = true;
 
     private int Max => _users?.FirstOrDefault()?.MaxFailedAccessAttempts ?? 5;
 
@@ -67,22 +85,63 @@ else
 
     private async Task ReloadAsync() => _users = await AdminSvc.GetUsersAsync();
 
+    private string Summary()
+    {
+        var n = _users!.Count;
+        return $"{n} account{(n == 1 ? "" : "s")} · {_users.Count(u => u.IsAdmin)} admin · {_users.Count(u => u.IsLockedOut)} locked · {_users.Count(u => !u.EmailConfirmed)} unverified";
+    }
+
+    private IEnumerable<AdminUserView> Sorted()
+    {
+        Func<AdminUserView, object> key = _sort switch
+        {
+            "jobs" => u => u.JobCount,
+            "entries" => u => u.EntryCount,
+            "status" => StatusRank,
+            _ => u => u.DisplayName,
+        };
+        var ordered = _asc ? _users!.OrderBy(key) : _users!.OrderByDescending(key);
+        return ordered.ThenBy(u => u.DisplayName);
+    }
+
+    // Sort key for the Status column: locked first, then unverified, then the rest.
+    private static object StatusRank(AdminUserView u) => u.IsLockedOut ? 0 : !u.EmailConfirmed ? 1 : 2;
+
+    private void SetSort(string key)
+    {
+        if (_sort == key) { _asc = !_asc; return; }
+        _sort = key;
+        // Numeric columns are most useful highest-first; text ascending.
+        _asc = key is not ("jobs" or "entries");
+    }
+
+    private RenderFragment Header(string key, string label, bool left = false) => @<th
+        style="@HeadStyle(left)cursor:pointer;user-select:none;" @onclick="@(() => SetSort(key))" title="Sort by @label">
+        <span style="display:inline-flex;align-items:center;gap:4px;@(left ? "" : "justify-content:flex-end;")">
+            @label
+            <span style="font-size:9px;color:@(_sort == key ? "var(--accent)" : "var(--text-mute)");">@(_sort == key ? (_asc ? "▲" : "▼") : "↕")</span>
+        </span>
+    </th>;
+
+    private static string HeadStyle(bool left) =>
+        $"text-align:{(left ? "left" : "right")};padding:9px 14px;font-size:10.5px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:var(--text-mute);border-bottom:1px solid var(--line);white-space:nowrap;";
+
+    private static string Td(string align = "left") =>
+        $"padding:11px 14px;border-bottom:1px solid var(--n-50);text-align:{align};vertical-align:middle;";
+
     private static string Initials(string name) => string.Concat(
         name.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(s => s[0]));
 
-    // The honest "lockout reason": Identity stores no free-text reason — a lockout
-    // is purely "exceeded the failed-attempt threshold", so we surface the count
-    // and the auto-unlock countdown.
+    // The honest "lockout reason": Identity stores no free-text reason and zeroes
+    // AccessFailedCount on lockout, so we surface the threshold + auto-unlock countdown.
     private static string? StatusLine(AdminUserView u)
     {
         if (u.IsLockedOut)
         {
-            // Identity zeroes AccessFailedCount the moment it locks the account,
-            // so the meaningful figure is the threshold that tripped the lockout.
             var mins = u.LockoutEnd is { } end
                 ? Math.Max(1, (int)Math.Ceiling((end - DateTimeOffset.UtcNow).TotalMinutes))
                 : 0;
-            var tail = mins > 0 ? $" · auto-unlocks in ~{mins} min" : "";
+            var tail = mins > 0 ? $" · ~{mins} min left" : "";
             return $"Locked after {u.MaxFailedAccessAttempts} failed sign-ins{tail}";
         }
         if (u.AccessFailedCount > 0)

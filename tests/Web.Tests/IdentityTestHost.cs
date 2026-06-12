@@ -20,7 +20,12 @@ internal sealed class IdentityTestHost : IDisposable
         var dbName = "admin-" + Guid.NewGuid();
         var services = new ServiceCollection();
         services.AddLogging();
-        services.AddDbContext<TimesheetDbContext>(o => o.UseInMemoryDatabase(dbName));
+        // Mirror production: a factory plus a scoped context resolved from it
+        // (the Identity stores resolve TimesheetDbContext; AdminService pulls
+        // short-lived contexts from the factory for its counts).
+        services.AddDbContextFactory<TimesheetDbContext>(o => o.UseInMemoryDatabase(dbName));
+        services.AddScoped<TimesheetDbContext>(sp =>
+            sp.GetRequiredService<IDbContextFactory<TimesheetDbContext>>().CreateDbContext());
         services.AddIdentityCore<AppUser>(o =>
             {
                 o.Lockout.MaxFailedAccessAttempts = 5;
@@ -65,6 +70,31 @@ internal sealed class IdentityTestHost : IDisposable
             await Users.UpdateAsync(user);
         }
         return user;
+    }
+
+    /// <summary>Seeds <paramref name="jobs"/> jobs for a user, each with
+    /// <paramref name="entriesPerJob"/> time entries, via a fresh context.</summary>
+    public async Task SeedJobsAndEntriesAsync(Guid userId, int jobs, int entriesPerJob)
+    {
+        var factory = Provider.GetRequiredService<IDbContextFactory<TimesheetDbContext>>();
+        await using var db = await factory.CreateDbContextAsync();
+        for (var j = 0; j < jobs; j++)
+        {
+            var job = new Job { Id = Guid.NewGuid(), UserId = userId, Name = $"Job {j}" };
+            db.Jobs.Add(job);
+            for (var e = 0; e < entriesPerJob; e++)
+            {
+                db.TimeEntries.Add(new TimeEntry
+                {
+                    Id = Guid.NewGuid(),
+                    JobId = job.Id,
+                    WorkDate = new DateOnly(2026, 6, 1).AddDays(e),
+                    StartTime = new TimeOnly(9, 0),
+                    EndTime = new TimeOnly(17, 0),
+                });
+            }
+        }
+        await db.SaveChangesAsync();
     }
 
     public void Dispose() => Provider.Dispose();
