@@ -19,4 +19,9 @@
   <ItemGroup>
     <ProjectReference Include="..\DataModel\DataModel.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- Email HTML templates, embedded so they load with no file-path/CWD concerns. -->
+    <EmbeddedResource Include="EmailTemplates\EmailTemplate.html" />
+    <EmbeddedResource Include="EmailTemplates\ButtonTemplate.html" />
+  </ItemGroup>
 </Project>
