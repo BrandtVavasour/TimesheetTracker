@@ -60,7 +60,8 @@ public class MainLayoutGraceTests
     [Test]
     public void UnverifiedPastWindow_RedirectsToVerifyPage()
     {
-        using var ctx = NewContext(emailConfirmed: false, createdAt: DateTimeOffset.UtcNow.AddDays(-8));
+        var createdAt = DateTimeOffset.UtcNow - AccountGrace.Period - TimeSpan.FromHours(1);
+        using var ctx = NewContext(emailConfirmed: false, createdAt: createdAt);
 
         ctx.Render<MainLayout>();
 
@@ -70,13 +71,14 @@ public class MainLayoutGraceTests
     [Test]
     public void UnverifiedWithinWindow_ShowsReminderBanner_NoRedirect()
     {
-        using var ctx = NewContext(emailConfirmed: false, createdAt: DateTimeOffset.UtcNow.AddDays(-1));
+        // Just signed up → comfortably inside the window for any Period value.
+        using var ctx = NewContext(emailConfirmed: false, createdAt: DateTimeOffset.UtcNow);
 
         var cut = ctx.Render<MainLayout>();
 
         CurrentUri(ctx).Should().NotContain("VerifyEmail");
         cut.Markup.Should().Contain("Verify your email to keep access");
-        cut.Markup.Should().Contain("days left");
+        cut.Markup.Should().Contain("left.");
     }
 
     [Test]

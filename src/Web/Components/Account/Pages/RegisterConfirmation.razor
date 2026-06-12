@@ -3,7 +3,7 @@
 <PageTitle>Check your email · Timesheet Tracker</PageTitle>
 
 <AuthShell Title="You're in — check your email"
-           Subtitle="@($"We've sent a verification link to {DisplayEmail}. You can start using Timesheet Tracker right away — just verify within {GraceDays} days to keep your access.")">
+           Subtitle="@($"We've sent a verification link to {DisplayEmail}. You can start using Timesheet Tracker right away — just verify within {GracePhrase} to keep your access.")">
     <a href="@(string.IsNullOrEmpty(ReturnUrl) ? "/" : ReturnUrl)" class="ts-btn focusable" data-variant="primary"
        style="display:inline-flex;align-items:center;justify-content:center;width:100%;height:42px;font-size:15px;font-weight:600;border-radius:var(--r-sm);text-decoration:none;border:1px solid transparent;background:var(--accent);color:#fff;box-shadow:var(--sh-1);">
         Continue to Timesheet Tracker
@@ -18,5 +18,6 @@
     [SupplyParameterFromQuery] private string? ReturnUrl { get; set; }
 
     private int GraceDays => (int)TimesheetTracker.Web.Services.AccountGrace.Period.TotalDays;
+    private string GracePhrase => $"{GraceDays} day{(GraceDays == 1 ? "" : "s")}";
     private string DisplayEmail => string.IsNullOrWhiteSpace(Email) ? "your inbox" : Email;
 }

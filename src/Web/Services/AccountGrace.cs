@@ -9,7 +9,7 @@ namespace TimesheetTracker.Web.Services;
 public static class AccountGrace
 {
     /// <summary>How long an unverified account may use the app before being blocked.</summary>
-    public static readonly TimeSpan Period = TimeSpan.FromDays(7);
+    public static readonly TimeSpan Period = TimeSpan.FromDays(1);
 
     /// <summary>The moment an unverified account's access is cut off.</summary>
     public static DateTimeOffset Expiry(DateTimeOffset createdAt) => createdAt + Period;
