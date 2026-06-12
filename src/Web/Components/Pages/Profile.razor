@@ -7,6 +7,7 @@
 @inject ILogger<Profile> Logger
 @inject IAccountInfo Account
 @inject IValidator<ProfileForm> Validator
+@inject IAccountExport ExportSvc
 @inject IJSRuntime Js
 
 <PageHead Title="Profile" Subtitle="Your details and sign-in methods." />
@@ -99,6 +100,29 @@ else
                 </div>
             </div>
         </Card>
+
+        <Card Title="Your data" Desc="Download a copy of everything in your account.">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;">
+                <div style="font-size:13px;color:var(--text-soft);max-width:430px;">
+                    A ZIP with an Excel <em>and</em> a JSON file for every job (archived included) — all your time
+                    entries — plus an <span class="mono">account.json</span> summary of your profile.
+                </div>
+                <Btn Variant="outline" Icon="download" OnClick="ExportAll">Export all data (.zip)</Btn>
+            </div>
+        </Card>
+
+        <div style="border:1px solid var(--danger-tint);border-radius:var(--r-lg);background:var(--surface);box-shadow:var(--sh-1);overflow:hidden;">
+            <div style="padding:18px 20px;border-bottom:1px solid var(--line);background:var(--danger-tint);">
+                <div style="font-size:15px;font-weight:700;color:var(--danger);">Danger zone</div>
+            </div>
+            <div style="padding:18px 20px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;">
+                <div style="font-size:13px;color:var(--text-soft);max-width:430px;">
+                    Permanently delete your account and <strong>all</strong> jobs, time entries and project codes.
+                    This cannot be undone — export your data first if you want a copy.
+                </div>
+                <Btn Variant="danger" Icon="trash" Href="Account/Manage/DeleteAccount">Delete account</Btn>
+            </div>
+        </div>
     </div>
 }
 
@@ -142,6 +166,16 @@ else
             context.PreventNavigation();
         }
     }
+
+    private async Task ExportAll() =>
+        await Toast.RunAsync(Logger,
+            async () =>
+            {
+                var bytes = await ExportSvc.BuildZipAsync();
+                await Js.InvokeVoidAsync("tsDownload",
+                    $"timesheet-data-{Data.Today:yyyy-MM-dd}.zip", Convert.ToBase64String(bytes), "application/zip");
+            },
+            "Your data export downloaded", "Couldn't build your export — please try again.", "export account");
 
     private async Task Save()
     {

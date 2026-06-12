@@ -19,6 +19,9 @@ public interface ITimesheetData
     /// <summary>Entries for a job across an inclusive date range, with project codes loaded.</summary>
     Task<IReadOnlyList<TimeEntry>> EntriesAsync(Guid jobId, DateOnly from, DateOnly to);
 
+    /// <summary>Every entry for a job (no date filter), with project codes loaded — for a full export.</summary>
+    Task<IReadOnlyList<TimeEntry>> AllEntriesAsync(Guid jobId);
+
     Task SaveEntryAsync(Guid jobId, TimeEntry entry);
     Task DeleteEntryAsync(Guid jobId, Guid entryId);
 
@@ -29,4 +32,8 @@ public interface ITimesheetData
 
     /// <summary>Effective holiday state for a job (override, else the user's default).</summary>
     AustralianState EffectiveState(Job job, AppUser user);
+
+    /// <summary>Permanently delete the current user and ALL of their data
+    /// (jobs, entries, custom fields, project codes). Irreversible.</summary>
+    Task DeleteAccountAsync();
 }

@@ -67,6 +67,16 @@ public sealed class TimesheetData(IDbContextFactory<TimesheetDbContext> dbFactor
             .ToListAsync();
     }
 
+    public async Task<IReadOnlyList<TimeEntry>> AllEntriesAsync(Guid jobId)
+    {
+        await using var db = await ScopeAsync();
+        return await db.TimeEntries.AsNoTracking()
+            .Include(e => e.ProjectCode)
+            .Where(e => e.JobId == jobId)
+            .OrderBy(e => e.WorkDate).ThenBy(e => e.StartTime)
+            .ToListAsync();
+    }
+
     public async Task SaveEntryAsync(Guid jobId, TimeEntry entry)
     {
         await using var db = await ScopeAsync();
@@ -158,6 +168,29 @@ public sealed class TimesheetData(IDbContextFactory<TimesheetDbContext> dbFactor
     }
 
     public AustralianState EffectiveState(Job job, AppUser appUser) => job.StateOverride ?? appUser.DefaultState;
+
+    public async Task DeleteAccountAsync()
+    {
+        var userId = await user.GetIdAsync();
+        if (userId is null) return;
+
+        await using var db = await dbFactory.CreateDbContextAsync();
+        db.CurrentUserId = userId.Value;
+
+        // Load each job with its dependents so EF cascades them (InMemory has no
+        // FK cascade; Postgres also cascades at the DB). Then remove the user.
+        var jobs = await db.Jobs
+            .Include(j => j.TimeEntries)
+            .Include(j => j.CustomFields)
+            .Include(j => j.ProjectCodes)
+            .ToListAsync();
+        db.Jobs.RemoveRange(jobs);
+
+        var appUser = await db.Users.FirstAsync(u => u.Id == userId.Value);
+        db.Users.Remove(appUser);
+
+        await db.SaveChangesAsync();
+    }
 
     // New children are added via the DbSet, not just the parent's collection:
     // their ids are page-generated (already set), and EF's graph discovery treats

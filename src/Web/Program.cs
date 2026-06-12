@@ -183,6 +183,7 @@ try
     builder.Services.AddScoped<IToastService, ToastService>();
     builder.Services.AddScoped<IAccountInfo, AccountInfo>();
     builder.Services.AddScoped<IAdminService, AdminService>();
+    builder.Services.AddScoped<IAccountExport, AccountExport>();
     builder.Services.AddSingleton<IAssetVersion, AssetVersion>();
     builder.Services.AddScoped<FluentValidation.IValidator<Job>, TimesheetTracker.DataModel.Validation.JobValidator>();
     builder.Services.AddScoped<FluentValidation.IValidator<TimesheetTracker.Web.Validation.ProfileForm>, TimesheetTracker.Web.Validation.ProfileFormValidator>();

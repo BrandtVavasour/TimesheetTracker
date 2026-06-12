@@ -39,6 +39,7 @@ public class PagesRenderTests
         ctx.Services.AddScoped<ITimeCalculationService, TimeCalculationService>();
         ctx.Services.AddScoped<IHolidayService, HolidayService>();
         ctx.Services.AddScoped<IExportService, ExportService>();
+        ctx.Services.AddScoped<IAccountExport, AccountExport>();
         ctx.Services.AddSingleton<IClock>(new StubClock(SeedData.Today));
         ctx.Services.AddScoped<ICurrentUser>(_ => new StubCurrentUser(SeedData.DemoUserId));
         ctx.Services.AddScoped<ITimesheetData, TimesheetData>();

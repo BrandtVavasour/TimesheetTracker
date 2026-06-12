@@ -1,0 +1,82 @@
+@page "/Account/Manage/DeleteAccount"
+
+@using System.ComponentModel.DataAnnotations
+@using TimesheetTracker.Web.Services
+
+@inject UserManager<AppUser> UserManager
+@inject SignInManager<AppUser> SignInManager
+@inject ITimesheetData Data
+@inject IdentityRedirectManager RedirectManager
+@inject ILogger<DeleteAccount> Logger
+
+<PageTitle>Delete account · Timesheet Tracker</PageTitle>
+
+<PageHead Title="Delete account" Subtitle="Permanently remove your account and all data." />
+
+<div style="max-width:520px;padding:22px 0 40px;">
+    <div style="border:1px solid var(--danger-tint);border-radius:var(--r-lg);background:var(--surface);box-shadow:var(--sh-1);overflow:hidden;">
+        <div style="padding:18px 20px;background:var(--danger-tint);border-bottom:1px solid var(--line);">
+            <div style="font-size:15px;font-weight:700;color:var(--danger);">This cannot be undone</div>
+        </div>
+        <div style="padding:20px;">
+            <p style="font-size:13.5px;color:var(--text-soft);line-height:1.5;margin:0 0 16px;">
+                Deleting your account permanently removes your profile and <strong>all</strong> jobs, time entries,
+                custom fields and project codes. They can't be recovered. If you want a copy first,
+                <a href="profile" style="color:var(--accent);font-weight:600;text-decoration:none;">export your data</a> before continuing.
+            </p>
+            @if (_message is not null)
+            {
+                <div style="margin-bottom:14px;padding:10px 12px;border-radius:var(--r-sm);font-size:13px;background:var(--danger-tint);color:var(--danger);">@_message</div>
+            }
+            <EditForm Model="Input" FormName="delete-account" OnValidSubmit="OnValidSubmitAsync" method="post">
+                <DataAnnotationsValidator />
+                <label style="display:flex;flex-direction:column;gap:6px;">
+                    <span style="font-size:12.5px;font-weight:600;color:var(--text-soft);">
+                        Type <span class="mono" style="color:var(--danger);">DELETE</span> to confirm
+                    </span>
+                    <InputText @bind-Value="Input.Confirm" class="input" autocomplete="off" placeholder="DELETE" />
+                </label>
+                <div style="display:flex;gap:8px;margin-top:16px;">
+                    <Btn Variant="danger" Icon="trash" Style="height:42px;">Permanently delete account</Btn>
+                    <Btn Variant="outline" Href="profile" Style="height:42px;">Cancel</Btn>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+</div>
+
+@code {
+    [CascadingParameter] private HttpContext HttpContext { get; set; } = default!;
+    [SupplyParameterFromForm] private InputModel Input { get; set; } = default!;
+
+    private string? _message;
+
+    protected override void OnInitialized() => Input ??= new();
+
+    private async Task OnValidSubmitAsync()
+    {
+        if (Input.Confirm != "DELETE")
+        {
+            _message = "Type DELETE (in capitals) to confirm.";
+            return;
+        }
+
+        var user = await UserManager.GetUserAsync(HttpContext.User);
+        if (user is null)
+        {
+            RedirectManager.RedirectTo("Account/Login");
+            return;
+        }
+
+        Logger.LogInformation("User permanently deleted their account.");
+        await Data.DeleteAccountAsync();      // user + all data
+        await SignInManager.SignOutAsync();   // clear the auth cookie
+        RedirectManager.RedirectTo("Account/AccountDeleted");
+    }
+
+    private sealed class InputModel
+    {
+        [Required]
+        public string Confirm { get; set; } = "";
+    }
+}
