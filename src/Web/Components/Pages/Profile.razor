@@ -30,7 +30,7 @@ else
                     <div style="font-size:13px;color:var(--text-soft);">@_user.Email</div>
                 </div>
             </div>
-            <div style="display:grid;grid-template-columns:1fr 220px;gap:16px;align-items:start;">
+            <div class="ts-2col" style="display:grid;grid-template-columns:1fr 220px;gap:16px;align-items:start;">
                 <Field Label="Display name">
                     <input class="input" @bind="_form.DisplayName" @bind:event="oninput"
                            style="@(FieldError(nameof(ProfileForm.DisplayName)) is not null ? "border-color:var(--danger);" : "")" />
@@ -55,7 +55,7 @@ else
 
         <Card Title="Sign-in methods" Desc="Local account plus optional Google sign-in.">
             <div style="display:flex;flex-direction:column;gap:10px;">
-                <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:var(--r-md);border:1px solid var(--line);">
+                <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:var(--r-md);border:1px solid var(--line);flex-wrap:wrap;">
                     <svg width="22" height="22" viewBox="0 0 48 48" style="flex:none;display:block;">
                         <path fill="#4285F4" d="M45.1 24.5c0-1.6-.1-2.7-.4-3.9H24v7.1h12.1c-.2 1.8-1.6 4.6-4.5 6.5l-.04.3 6.6 5.1.5.05c4.2-3.9 6.6-9.6 6.6-15.2Z"/>
                         <path fill="#34A853" d="M24 46c5.9 0 10.9-2 14.5-5.3l-6.9-5.4c-1.9 1.3-4.3 2.2-7.6 2.2-5.8 0-10.7-3.8-12.4-9.1l-.3.02-6.9 5.3-.1.3C7.8 41 15.3 46 24 46Z"/>
@@ -75,7 +75,7 @@ else
                         <span style="font-size:12.5px;color:var(--text-mute);">Not connected</span>
                     }
                 </div>
-                <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:var(--r-md);border:1px solid var(--line);">
+                <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:var(--r-md);border:1px solid var(--line);flex-wrap:wrap;">
                     <span style="width:22px;height:22px;display:grid;place-items:center;color:var(--text-soft);"><Icon Name="user" Size="20" /></span>
                     <div style="flex:1;">
                         <div style="font-size:13.5px;font-weight:600;">Email &amp; password</div>
