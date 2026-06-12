@@ -44,4 +44,10 @@ public class ExportService(ITimeCalculationService calc, IHolidayService holiday
         await builder.ToStream(stream, cancel);
         return stream.ToArray();
     }
+
+    public Task<byte[]> ToPdfAsync(IReadOnlyList<TimesheetRow> rows, ExportDocument document, CancellationToken cancel = default)
+    {
+        cancel.ThrowIfCancellationRequested();
+        return Task.FromResult(TimesheetPdf.Render(rows, document));
+    }
 }

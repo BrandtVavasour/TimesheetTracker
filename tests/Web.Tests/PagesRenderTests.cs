@@ -88,19 +88,36 @@ public class PagesRenderTests
     }
 
     [Test]
-    public void Weekly_ExportWeekButton_TriggersDownload()
+    public void Weekly_ExportExcelButton_TriggersXlsxDownload()
     {
         using var ctx = NewSeededContext();
         var cut = ctx.Render<Weekly>();
         cut.WaitForState(() => !cut.Markup.Contains("Loading…"), TimeSpan.FromSeconds(10));
 
-        cut.FindAll("button").Single(b => b.TextContent.Contains("Export week")).Click();
+        cut.FindAll("button").Single(b => b.TextContent.Trim() == "Excel").Click();
 
         cut.WaitForState(
             () => ctx.JSInterop.Invocations.Any(i => i.Identifier == "tsDownload"),
             TimeSpan.FromSeconds(10));
         var call = ctx.JSInterop.Invocations.Single(i => i.Identifier == "tsDownload");
         call.Arguments[0]!.ToString().Should().EndWith(".xlsx");
+    }
+
+    [Test]
+    public void Weekly_ExportPdfButton_TriggersPdfDownload()
+    {
+        using var ctx = NewSeededContext();
+        var cut = ctx.Render<Weekly>();
+        cut.WaitForState(() => !cut.Markup.Contains("Loading…"), TimeSpan.FromSeconds(10));
+
+        cut.FindAll("button").Single(b => b.TextContent.Trim() == "PDF").Click();
+
+        cut.WaitForState(
+            () => ctx.JSInterop.Invocations.Any(i => i.Identifier == "tsDownload"),
+            TimeSpan.FromSeconds(10));
+        var call = ctx.JSInterop.Invocations.Single(i => i.Identifier == "tsDownload");
+        call.Arguments[0]!.ToString().Should().EndWith(".pdf");
+        call.Arguments[2]!.ToString().Should().Be("application/pdf");
     }
 
     [Test]
@@ -173,7 +190,26 @@ public class PagesRenderTests
         cut.Markup.Should().Contain("Worksheet preview");
         cut.Markup.Should().Contain("Period total");
         cut.Markup.Should().Contain("Sprint planning");
-        cut.Markup.Should().Contain("Download .xlsx");
+        // Both export formats are offered.
+        cut.FindAll("button").Should().Contain(b => b.TextContent.Trim() == "Excel");
+        cut.FindAll("button").Should().Contain(b => b.TextContent.Trim() == "PDF");
+    }
+
+    [Test]
+    public void Export_PdfButton_TriggersPdfDownload()
+    {
+        using var ctx = NewSeededContext();
+        var cut = ctx.Render<Export>();
+        cut.WaitForState(() => !cut.Markup.Contains("Loading…"), TimeSpan.FromSeconds(10));
+
+        cut.FindAll("button").Single(b => b.TextContent.Trim() == "PDF").Click();
+
+        cut.WaitForState(
+            () => ctx.JSInterop.Invocations.Any(i => i.Identifier == "tsDownload"),
+            TimeSpan.FromSeconds(10));
+        var call = ctx.JSInterop.Invocations.Single(i => i.Identifier == "tsDownload");
+        call.Arguments[0]!.ToString().Should().EndWith(".pdf");
+        call.Arguments[2]!.ToString().Should().Be("application/pdf");
     }
 
     [Test]

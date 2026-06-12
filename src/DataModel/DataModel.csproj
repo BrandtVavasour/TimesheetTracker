@@ -12,6 +12,7 @@
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
     <PackageReference Include="AustralianHolidays" />
     <PackageReference Include="ExcelsiorClosedXml" />
+    <PackageReference Include="QuestPDF" />
     <PackageReference Include="FluentValidation" />
   </ItemGroup>
   <ItemGroup>

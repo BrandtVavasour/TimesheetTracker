@@ -133,4 +133,36 @@ public class ExportServiceTests
         bytes[0].Should().Be((byte)'P');
         bytes[1].Should().Be((byte)'K');
     }
+
+    private static ExportDocument SampleDoc(IReadOnlyList<TimesheetRow> rows, int totalMinutes = 450) =>
+        new("Acme Consulting", "Jane Developer", AustralianState.NSW, "8 – 14 Jun 2026", 2, totalMinutes,
+            [new ExportField("Employee #", "E-1024"), new ExportField("Cost centre", "CC-7")]);
+
+    [Test]
+    public async Task ToPdfAsync_ProducesNonEmptyPdf()
+    {
+        var service = new ExportService(new TimeCalculationService(), new HolidayService());
+        var rows = service.BuildRows(
+            [new TimeEntry
+                { WorkDate = new(2026, 12, 25), StartTime = new(9, 0), EndTime = new(17, 0),
+                  BreakMinutes = 30, IsWorkFromHome = true, Notes = "Worked the holiday" }],
+            new(AustralianState.NSW, 2));
+
+        var bytes = await service.ToPdfAsync(rows, SampleDoc(rows));
+
+        // PDF files begin with the "%PDF-" magic header.
+        bytes.Should().NotBeEmpty();
+        System.Text.Encoding.ASCII.GetString(bytes, 0, 5).Should().Be("%PDF-");
+    }
+
+    [Test]
+    public async Task ToPdfAsync_WithNoRows_StillProducesValidPdf()
+    {
+        var service = new ExportService(new TimeCalculationService(), new HolidayService());
+
+        var bytes = await service.ToPdfAsync([], SampleDoc([], totalMinutes: 0));
+
+        bytes.Should().NotBeEmpty();
+        System.Text.Encoding.ASCII.GetString(bytes, 0, 5).Should().Be("%PDF-");
+    }
 }

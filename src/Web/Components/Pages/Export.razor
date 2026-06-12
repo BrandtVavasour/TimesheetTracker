@@ -68,10 +68,13 @@ else
                     <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:var(--text-soft);">Total</span><span class="mono" style="font-weight:600;">@HoursFormat.Hmm(_totalMin)</span></div>
                     <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;"><span style="color:var(--text-soft);">Decimal</span><CopyValue Value="@HoursFormat.Decimal(_totalMin, _job.DecimalPlaces)" Size="sm" Tone="accent" /></div>
                 </div>
-                <Btn Variant="primary" Size="lg" Icon="download" Disabled="@(_rows.Count == 0)" OnClick="Download">Download .xlsx</Btn>
+                <div style="display:flex;gap:8px;">
+                    <Btn Variant="primary" Size="lg" Icon="download" Disabled="@(_rows.Count == 0)" OnClick="DownloadXlsx" Style="flex:1;">Excel</Btn>
+                    <Btn Variant="accentSoft" Size="lg" Icon="download" Disabled="@(_rows.Count == 0)" OnClick="DownloadPdf" Style="flex:1;">PDF</Btn>
+                </div>
                 <div style="font-size:11.5px;color:var(--text-mute);display:flex;gap:6px;align-items:flex-start;">
                     <span style="margin-top:1px;flex:none;"><Icon Name="info" Size="13" /></span>
-                    <span>Generated via ExcelsiorClosedXml — a real .xlsx workbook with the columns previewed here.</span>
+                    <span>Excel (.xlsx) and PDF both carry the exact columns previewed here.</span>
                 </div>
             </div>
         </Card>
@@ -212,20 +215,33 @@ else
         };
     }
 
-    private async Task Download()
+    private Task DownloadXlsx() => Download(pdf: false);
+    private Task DownloadPdf() => Download(pdf: true);
+
+    private async Task Download(bool pdf)
     {
         if (_job is null || _rows.Count == 0) return;
         var (from, _) = ExportPeriod.Range(_scope, _ref);
         var slug = System.Text.RegularExpressions.Regex.Replace(_job.Name, "[^a-zA-Z0-9]+", "-").Trim('-');
-        var filename = $"{slug}_{_scope}_{from:yyyy-MM-dd}.xlsx";
+        var filename = $"{slug}_{_scope}_{from:yyyy-MM-dd}.{(pdf ? "pdf" : "xlsx")}";
         await Toast.RunAsync(Logger,
             async () =>
             {
-                var bytes = await ExportSvc.ToWorkbookAsync(_rows);
-                await Js.InvokeVoidAsync("tsDownload", filename, Convert.ToBase64String(bytes),
-                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+                var (bytes, mime) = pdf
+                    ? (await ExportSvc.ToPdfAsync(_rows, BuildDocument()), "application/pdf")
+                    : (await ExportSvc.ToWorkbookAsync(_rows),
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+                await Js.InvokeVoidAsync("tsDownload", filename, Convert.ToBase64String(bytes), mime);
             },
             $"{filename} downloaded", "Couldn't generate the export — please try again.", $"export {_job.Id}");
+    }
+
+    private ExportDocument BuildDocument()
+    {
+        var fields = _job!.CustomFields.Where(f => f.ShowOnTimesheet).OrderBy(f => f.DisplayOrder)
+            .Select(f => new ExportField(f.Name, f.Value)).ToList();
+        return new ExportDocument(_job.Name, _user.DisplayName, _state, RangeLabel(),
+            _job.DecimalPlaces, _totalMin, fields);
     }
 
     private static string Td(string align = "left") =>

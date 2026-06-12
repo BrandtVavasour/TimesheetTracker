@@ -92,7 +92,10 @@ else
                     <button class="ts-iconbtn focusable" @onclick="@(() => ChangeWeek(7))" title="Next week"
                             style="width:32px;height:32px;flex:none;display:inline-flex;align-items:center;justify-content:center;border-radius:var(--r-sm);border:none;background:transparent;color:var(--text-soft);cursor:pointer;"><Icon Name="chevR" Size="17" /></button>
                 </div>
-                <Btn Variant="outline" Icon="download" OnClick="ExportWeek" Style="height:38px;">Export week</Btn>
+                <div style="display:flex;gap:6px;flex:none;">
+                    <Btn Variant="outline" Icon="download" OnClick="ExportWeekXlsx" Style="height:38px;">Excel</Btn>
+                    <Btn Variant="outline" Icon="download" OnClick="ExportWeekPdf" Style="height:38px;">PDF</Btn>
+                </div>
             </div>
         </div>
 
@@ -403,8 +406,11 @@ else
             async () => { await Data.DeleteEntryAsync(_job!.Id, id); await LoadWeekAsync(); },
             "Entry deleted", "Couldn't delete the entry — please try again.", $"delete entry {id}");
 
-    /// <summary>Download the currently viewed week for the selected job as .xlsx.</summary>
-    private async Task ExportWeek()
+    private Task ExportWeekXlsx() => ExportWeek(pdf: false);
+    private Task ExportWeekPdf() => ExportWeek(pdf: true);
+
+    /// <summary>Download the currently viewed week for the selected job as .xlsx or .pdf.</summary>
+    private async Task ExportWeek(bool pdf)
     {
         if (_job is null) return;
         var days = CalendarFormat.WeekDates(_week);
@@ -416,13 +422,27 @@ else
             return;
         }
         var slug = System.Text.RegularExpressions.Regex.Replace(_job.Name, "[^a-zA-Z0-9]+", "-").Trim('-');
-        var filename = $"{slug}_Week_{days[0]:yyyy-MM-dd}.xlsx";
+        var filename = $"{slug}_Week_{days[0]:yyyy-MM-dd}.{(pdf ? "pdf" : "xlsx")}";
         await Toast.RunAsync(Logger,
             async () =>
             {
-                var bytes = await ExportSvc.ToWorkbookAsync(rows);
-                await Js.InvokeVoidAsync("tsDownload", filename, Convert.ToBase64String(bytes),
-                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+                byte[] bytes; string mime;
+                if (pdf)
+                {
+                    var totalMin = entries.Sum(e => Math.Max(0, Calc.DurationMinutes(e)));
+                    var fields = _job.CustomFields.Where(f => f.ShowOnTimesheet).OrderBy(f => f.DisplayOrder)
+                        .Select(f => new ExportField(f.Name, f.Value)).ToList();
+                    var doc = new ExportDocument(_job.Name, _user.DisplayName, _state,
+                        CalendarFormat.Range(days[0], days[6]), _job.DecimalPlaces, totalMin, fields);
+                    bytes = await ExportSvc.ToPdfAsync(rows, doc);
+                    mime = "application/pdf";
+                }
+                else
+                {
+                    bytes = await ExportSvc.ToWorkbookAsync(rows);
+                    mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+                }
+                await Js.InvokeVoidAsync("tsDownload", filename, Convert.ToBase64String(bytes), mime);
             },
             $"{filename} downloaded", "Couldn't generate the export — please try again.", $"export week {_job.Id}");
     }
