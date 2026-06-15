@@ -132,3 +132,16 @@ volume (so logins survive restarts), and honours `X-Forwarded-Proto/For` from th
 > **Before production:** email confirmation is currently off (`RequireConfirmedAccount = false`)
 > because no email sender is wired. Plug in a real `IEmailSender<AppUser>` (e.g. AWS SES) and
 > re-enable confirmation.
+
+## License
+
+Licensed under the [MIT License](LICENSE) — © 2026 JABTech.
+
+### Third-party notice — QuestPDF
+
+PDF export is generated with [QuestPDF](https://www.questpdf.com/), used under the
+**QuestPDF Community License**. That licence is free provided the user's organisation has
+**annual gross revenue under US$1M**; above that threshold a paid QuestPDF licence is
+required (see <https://www.questpdf.com/license/>). QuestPDF's terms govern only the use of
+QuestPDF itself — they do not affect the MIT licensing of this project. All other
+dependencies are MIT / Apache-2.0 licensed.
