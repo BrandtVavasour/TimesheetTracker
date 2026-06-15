@@ -184,6 +184,21 @@ public class PagesRenderTests
     }
 
     [Test]
+    public void Jobs_DeleteJob_ConfirmationStatesEntryCount()
+    {
+        using var ctx = NewSeededContext();
+        var cut = ctx.Render<Jobs>();
+        cut.WaitForState(() => !cut.Markup.Contains("Loading…"), TimeSpan.FromSeconds(10));
+
+        // The first seeded job (Acme Corp) has 5 entries.
+        cut.FindAll("button").Single(b => b.TextContent.Trim() == "Delete job").Click();
+
+        cut.WaitForState(() => cut.Markup.Contains("permanently deletes"), TimeSpan.FromSeconds(10));
+        cut.Markup.Should().Contain("5 time entries");
+        cut.FindAll("button").Should().Contain(b => b.TextContent.Contains("Yes, permanently delete"));
+    }
+
+    [Test]
     public void Export_RendersWorksheetPreview()
     {
         using var ctx = NewSeededContext();

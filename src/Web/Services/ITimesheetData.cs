@@ -28,6 +28,13 @@ public interface ITimesheetData
     Task SaveJobAsync(Job job);
     Task<Job> AddJobAsync();
 
+    /// <summary>Number of time entries on a job (owner-scoped) — for the delete confirmation.</summary>
+    Task<int> EntryCountAsync(Guid jobId);
+
+    /// <summary>Permanently delete a job and all its entries, custom fields and project
+    /// codes. Owner-scoped: deleting a job you don't own is a silent no-op. Irreversible.</summary>
+    Task DeleteJobAsync(Guid jobId);
+
     Task UpdateUserAsync(string displayName, AustralianState defaultState, bool exportIncludeAllDays);
 
     /// <summary>Effective holiday state for a job (override, else the user's default).</summary>

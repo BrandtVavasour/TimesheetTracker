@@ -138,6 +138,30 @@ public sealed class TimesheetData(IDbContextFactory<TimesheetDbContext> dbFactor
         await db.SaveChangesAsync();
     }
 
+    public async Task<int> EntryCountAsync(Guid jobId)
+    {
+        await using var db = await ScopeAsync();
+        // The TimeEntry query filter scopes this to the owner; a non-owned job counts 0.
+        return await db.TimeEntries.CountAsync(e => e.JobId == jobId);
+    }
+
+    public async Task DeleteJobAsync(Guid jobId)
+    {
+        await using var db = await ScopeAsync();
+        // The query filter makes a non-owned job invisible, so this only ever finds
+        // (and deletes) a job the current user owns. Dependents are loaded so EF
+        // cascades them on InMemory; Postgres also cascades at the DB.
+        var job = await db.Jobs
+            .Include(j => j.TimeEntries)
+            .Include(j => j.CustomFields)
+            .Include(j => j.ProjectCodes)
+            .FirstOrDefaultAsync(j => j.Id == jobId);
+        if (job is null) return;
+
+        db.Jobs.Remove(job);
+        await db.SaveChangesAsync();
+    }
+
     public async Task<Job> AddJobAsync()
     {
         await using var db = await ScopeAsync();
